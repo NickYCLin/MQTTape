@@ -1,0 +1,222 @@
+import mqtt, { type IClientOptions, type MqttClient, type Packet } from 'mqtt'
+import type {
+  ConnectionConfig,
+  MqttMessageRecord,
+  MqttQos,
+  PublishRequest,
+  StatusEvent,
+  SubscribeRequest
+} from '../shared/contracts'
+import { createMessageId } from '../shared/message'
+
+type StatusListener = (event: StatusEvent) => void
+type MessageListener = (message: MqttMessageRecord) => void
+
+export class MqttService {
+  private client: MqttClient | undefined
+  private statusListener: StatusListener
+  private messageListener: MessageListener
+
+  constructor(statusListener: StatusListener, messageListener: MessageListener) {
+    this.statusListener = statusListener
+    this.messageListener = messageListener
+  }
+
+  async connect(config: ConnectionConfig): Promise<void> {
+    await this.disconnect()
+    this.validateConfig(config)
+    this.statusListener({ state: 'connecting', detail: this.describeEndpoint(config) })
+
+    const options: IClientOptions = {
+      clientId: config.clientId || undefined,
+      username: config.username || undefined,
+      password: config.password || undefined,
+      protocolVersion: config.mqttVersion,
+      clean: config.clean,
+      keepalive: config.keepalive,
+      reconnectPeriod: config.reconnectPeriod,
+      connectTimeout: 15_000,
+      rejectUnauthorized: config.rejectUnauthorized,
+      resubscribe: true
+    }
+
+    const client = mqtt.connect(this.buildUrl(config), options)
+    this.client = client
+    this.bindEvents(client, config)
+
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        cleanup()
+        client.end(true)
+        reject(new Error('Connection timed out after 15 seconds.'))
+      }, 15_000)
+
+      const handleConnect = (): void => {
+        cleanup()
+        resolve()
+      }
+
+      const handleError = (error: Error): void => {
+        cleanup()
+        client.end(true)
+        reject(error)
+      }
+
+      const cleanup = (): void => {
+        clearTimeout(timeout)
+        client.off('connect', handleConnect)
+        client.off('error', handleError)
+      }
+
+      client.once('connect', handleConnect)
+      client.once('error', handleError)
+    })
+  }
+
+  async disconnect(): Promise<void> {
+    const client = this.client
+    this.client = undefined
+
+    if (!client) return
+
+    await new Promise<void>((resolve) => {
+      const timeout = setTimeout(resolve, 2_000)
+      client.end(false, {}, () => {
+        clearTimeout(timeout)
+        resolve()
+      })
+    })
+    this.statusListener({ state: 'disconnected' })
+  }
+
+  async subscribe(request: SubscribeRequest): Promise<void> {
+    const client = this.requireConnectedClient()
+    const topic = request.topic.trim()
+    if (!topic) throw new Error('Subscription topic is required.')
+
+    await new Promise<void>((resolve, reject) => {
+      client.subscribe(topic, { qos: request.qos }, (error) => {
+        if (error) reject(error)
+        else resolve()
+      })
+    })
+  }
+
+  async unsubscribe(topic: string): Promise<void> {
+    const client = this.requireConnectedClient()
+    const normalized = topic.trim()
+    if (!normalized) return
+
+    await new Promise<void>((resolve, reject) => {
+      client.unsubscribe(normalized, (error) => {
+        if (error) reject(error)
+        else resolve()
+      })
+    })
+  }
+
+  async publish(request: PublishRequest): Promise<void> {
+    const client = this.requireConnectedClient()
+    const topic = request.topic.trim()
+    if (!topic) throw new Error('Publish topic is required.')
+
+    const payload = request.payloadBase64
+      ? Buffer.from(request.payloadBase64, 'base64')
+      : Buffer.from(request.payload, 'utf8')
+    await new Promise<void>((resolve, reject) => {
+      client.publish(
+        topic,
+        payload,
+        { qos: request.qos, retain: request.retain },
+        (error) => {
+          if (error) {
+            reject(error)
+            return
+          }
+
+          this.messageListener({
+            id: createMessageId(),
+            direction: 'outgoing',
+            timestamp: new Date().toISOString(),
+            topic,
+            qos: request.qos,
+            retain: request.retain,
+            duplicate: false,
+            payloadBase64: payload.toString('base64'),
+            payloadText: request.payloadBase64 ? payload.toString('utf8') : request.payload,
+            size: payload.byteLength
+          })
+          resolve()
+        }
+      )
+    })
+  }
+
+  private bindEvents(client: MqttClient, config: ConnectionConfig): void {
+    client.on('connect', () => {
+      this.statusListener({ state: 'connected', detail: this.describeEndpoint(config) })
+    })
+    client.on('reconnect', () => this.statusListener({ state: 'reconnecting' }))
+    client.on('offline', () => this.statusListener({ state: 'offline' }))
+    client.on('close', () => {
+      if (this.client === client) this.statusListener({ state: 'disconnected' })
+    })
+    client.on('error', (error) => {
+      this.statusListener({ state: 'error', detail: error.message })
+    })
+    client.on('message', (topic, payload, packet) => {
+      this.messageListener(this.toIncomingMessage(topic, payload, packet))
+    })
+  }
+
+  private toIncomingMessage(
+    topic: string,
+    payload: Buffer,
+    packet: Packet
+  ): MqttMessageRecord {
+    const publishPacket = packet as Packet & {
+      qos?: MqttQos
+      retain?: boolean
+      dup?: boolean
+    }
+
+    return {
+      id: createMessageId(),
+      direction: 'incoming',
+      timestamp: new Date().toISOString(),
+      topic,
+      qos: publishPacket.qos ?? 0,
+      retain: publishPacket.retain ?? false,
+      duplicate: publishPacket.dup ?? false,
+      payloadBase64: payload.toString('base64'),
+      payloadText: payload.toString('utf8'),
+      size: payload.byteLength
+    }
+  }
+
+  private requireConnectedClient(): MqttClient {
+    if (!this.client?.connected) throw new Error('Connect to a broker first.')
+    return this.client
+  }
+
+  private validateConfig(config: ConnectionConfig): void {
+    if (!config.host.trim()) throw new Error('Broker host is required.')
+    if (!Number.isInteger(config.port) || config.port < 1 || config.port > 65_535) {
+      throw new Error('Broker port must be between 1 and 65535.')
+    }
+  }
+
+  private buildUrl(config: ConnectionConfig): string {
+    const rawHost = config.host.trim()
+    const host = rawHost.includes(':') && !rawHost.startsWith('[') ? `[${rawHost}]` : rawHost
+    const path = config.protocol === 'ws' || config.protocol === 'wss'
+      ? `/${config.path.trim().replace(/^\/+/, '')}`
+      : ''
+
+    return `${config.protocol}://${host}:${config.port}${path}`
+  }
+
+  private describeEndpoint(config: ConnectionConfig): string {
+    return `${config.protocol}://${config.host}:${config.port}`
+  }
+}
