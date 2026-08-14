@@ -1,12 +1,15 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type {
+  BrokerProfile,
   CaptureFile,
   ConnectionConfig,
   MqttMessageRecord,
   MqttapeBridge,
   PublishRequest,
+  SaveBrokerProfileRequest,
   StatusEvent,
-  SubscribeRequest
+  SubscribeRequest,
+  TlsFileKind
 } from '../shared/contracts'
 
 const bridge: MqttapeBridge = {
@@ -16,6 +19,12 @@ const bridge: MqttapeBridge = {
   unsubscribe: (topic: string) => ipcRenderer.invoke('mqttape:unsubscribe', topic),
   publish: (request: PublishRequest) => ipcRenderer.invoke('mqttape:publish', request),
   saveCapture: (capture: CaptureFile) => ipcRenderer.invoke('mqttape:save-capture', capture),
+  listProfiles: (): Promise<BrokerProfile[]> => ipcRenderer.invoke('mqttape:list-profiles'),
+  saveProfile: (request: SaveBrokerProfileRequest): Promise<BrokerProfile> =>
+    ipcRenderer.invoke('mqttape:save-profile', request),
+  deleteProfile: (id: string): Promise<void> => ipcRenderer.invoke('mqttape:delete-profile', id),
+  selectTlsFile: (kind: TlsFileKind): Promise<string | null> =>
+    ipcRenderer.invoke('mqttape:select-tls-file', kind),
   onStatus: (listener: (event: StatusEvent) => void) => {
     const wrapped = (_event: Electron.IpcRendererEvent, status: StatusEvent): void => listener(status)
     ipcRenderer.on('mqttape:status', wrapped)

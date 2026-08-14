@@ -1,0 +1,79 @@
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import type { IClientOptions } from 'mqtt'
+import { afterEach, describe, expect, it } from 'vitest'
+import type { ConnectionConfig } from '../shared/contracts'
+import { createClientOptions } from './mqtt-service'
+
+const temporaryDirectories: string[] = []
+
+function config(overrides: Partial<ConnectionConfig> = {}): ConnectionConfig {
+  return {
+    name: 'MQTT 5 broker',
+    protocol: 'mqtts',
+    host: 'broker.example.com',
+    port: 8883,
+    path: 'mqtt',
+    clientId: 'mqttape_options',
+    username: '',
+    password: '',
+    mqttVersion: 5,
+    clean: true,
+    keepalive: 60,
+    reconnectPeriod: 1_000,
+    rejectUnauthorized: true,
+    caPath: '',
+    clientCertificatePath: '',
+    clientKeyPath: '',
+    clientKeyPassphrase: '',
+    ...overrides
+  }
+}
+
+afterEach(async () => {
+  await Promise.all(temporaryDirectories.splice(0).map((directory) =>
+    rm(directory, { recursive: true, force: true })
+  ))
+})
+
+describe('MQTT client options', () => {
+  it('passes MQTT 5 and mTLS material to the MQTT client', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'mqttape-tls-'))
+    temporaryDirectories.push(directory)
+    const caPath = join(directory, 'ca.pem')
+    const certificatePath = join(directory, 'client.pem')
+    const keyPath = join(directory, 'client.key')
+    await Promise.all([
+      writeFile(caPath, 'test-ca'),
+      writeFile(certificatePath, 'test-certificate'),
+      writeFile(keyPath, 'test-key')
+    ])
+
+    const options = await createClientOptions(config({
+      caPath,
+      clientCertificatePath: certificatePath,
+      clientKeyPath: keyPath,
+      clientKeyPassphrase: 'test-passphrase'
+    })) as IClientOptions & {
+      protocolVersion: number
+      ca: Buffer
+      cert: Buffer
+      key: Buffer
+      passphrase: string
+    }
+
+    expect(options.protocolVersion).toBe(5)
+    expect(options.ca.toString()).toBe('test-ca')
+    expect(options.cert.toString()).toBe('test-certificate')
+    expect(options.key.toString()).toBe('test-key')
+    expect(options.passphrase).toBe('test-passphrase')
+  })
+
+  it('rejects TLS material on plaintext transports and incomplete client identities', async () => {
+    await expect(createClientOptions(config({ protocol: 'mqtt', caPath: 'ca.pem' })))
+      .rejects.toThrow('Custom TLS files require mqtts or wss.')
+    await expect(createClientOptions(config({ clientCertificatePath: 'client.pem' })))
+      .rejects.toThrow('Client certificate and private key must be selected together.')
+  })
+})

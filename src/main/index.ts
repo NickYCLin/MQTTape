@@ -1,13 +1,16 @@
-import { app, BrowserWindow, dialog, ipcMain, session, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, safeStorage, session, shell } from 'electron'
 import { writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import type {
   CaptureFile,
   ConnectionConfig,
   PublishRequest,
-  SubscribeRequest
+  SaveBrokerProfileRequest,
+  SubscribeRequest,
+  TlsFileKind
 } from '../shared/contracts'
 import { MqttService } from './mqtt-service'
+import { ProfileStore } from './profile-store'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -15,11 +18,24 @@ const mqttService = new MqttService(
   (status) => mainWindow?.webContents.send('mqttape:status', status),
   (message) => mainWindow?.webContents.send('mqttape:message', message)
 )
+const selectedTlsFiles = new Set<string>()
 
-function registerIpcHandlers(): void {
-  ipcMain.handle('mqttape:connect', (_event, config: ConnectionConfig) =>
-    mqttService.connect(config)
-  )
+async function assertTrustedTlsPaths(
+  config: ConnectionConfig,
+  profileStore: ProfileStore
+): Promise<void> {
+  const paths = [config.caPath, config.clientCertificatePath, config.clientKeyPath]
+  for (const path of paths) {
+    if (!path || selectedTlsFiles.has(path) || await profileStore.isTrustedTlsPath(path)) continue
+    throw new Error('Select TLS files through MQTTape before connecting or saving a profile.')
+  }
+}
+
+function registerIpcHandlers(profileStore: ProfileStore): void {
+  ipcMain.handle('mqttape:connect', async (_event, config: ConnectionConfig) => {
+    await assertTrustedTlsPaths(config, profileStore)
+    return mqttService.connect(config)
+  })
   ipcMain.handle('mqttape:disconnect', () => mqttService.disconnect())
   ipcMain.handle('mqttape:subscribe', (_event, request: SubscribeRequest) =>
     mqttService.subscribe(request)
@@ -43,6 +59,32 @@ function registerIpcHandlers(): void {
     if (result.canceled || !result.filePath) return false
     await writeFile(result.filePath, JSON.stringify(capture, null, 2), 'utf8')
     return true
+  })
+  ipcMain.handle('mqttape:list-profiles', () => profileStore.list())
+  ipcMain.handle(
+    'mqttape:save-profile',
+    async (_event, request: SaveBrokerProfileRequest) => {
+      await assertTrustedTlsPaths(request.config, profileStore)
+      return profileStore.save(request)
+    }
+  )
+  ipcMain.handle('mqttape:delete-profile', (_event, id: string) => profileStore.delete(id))
+  ipcMain.handle('mqttape:select-tls-file', async (_event, kind: TlsFileKind) => {
+    const filters: Record<TlsFileKind, Electron.FileFilter[]> = {
+      ca: [{ name: 'Certificate authority', extensions: ['pem', 'crt', 'cer'] }],
+      certificate: [{ name: 'Client certificate', extensions: ['pem', 'crt', 'cer'] }],
+      key: [{ name: 'Client private key', extensions: ['key', 'pem'] }]
+    }
+    if (!filters[kind]) throw new Error('Unsupported TLS file type.')
+    const result = await dialog.showOpenDialog(mainWindow!, {
+      title: 'Select TLS file',
+      properties: ['openFile'],
+      filters: filters[kind]
+    })
+    if (result.canceled || result.filePaths.length === 0) return null
+    const [path] = result.filePaths
+    selectedTlsFiles.add(path)
+    return path
   })
 }
 
@@ -96,7 +138,12 @@ if (!hasSingleInstanceLock) {
     session.defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) => {
       callback(false)
     })
-    registerIpcHandlers()
+    const profileStore = new ProfileStore(join(app.getPath('userData'), 'profiles.json'), {
+      isAvailable: () => safeStorage.isEncryptionAvailable(),
+      encrypt: (value) => safeStorage.encryptString(value),
+      decrypt: (value) => safeStorage.decryptString(value)
+    })
+    registerIpcHandlers(profileStore)
     createWindow()
 
     app.on('activate', () => {

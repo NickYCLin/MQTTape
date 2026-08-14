@@ -1,4 +1,5 @@
 import mqtt, { type IClientOptions, type MqttClient, type Packet } from 'mqtt'
+import { readFile } from 'node:fs/promises'
 import type {
   ConnectionConfig,
   MqttMessageRecord,
@@ -11,6 +12,39 @@ import { createMessageId } from '../shared/message'
 
 type StatusListener = (event: StatusEvent) => void
 type MessageListener = (message: MqttMessageRecord) => void
+type SecureClientOptions = IClientOptions & { passphrase?: string }
+
+export async function createClientOptions(config: ConnectionConfig): Promise<IClientOptions> {
+  const options: SecureClientOptions = {
+    clientId: config.clientId || undefined,
+    username: config.username || undefined,
+    password: config.password || undefined,
+    protocolVersion: config.mqttVersion,
+    clean: config.clean,
+    keepalive: config.keepalive,
+    reconnectPeriod: config.reconnectPeriod,
+    connectTimeout: 15_000,
+    rejectUnauthorized: config.rejectUnauthorized,
+    resubscribe: true
+  }
+
+  const secureProtocol = config.protocol === 'mqtts' || config.protocol === 'wss'
+  const hasTlsFiles = Boolean(
+    config.caPath || config.clientCertificatePath || config.clientKeyPath
+  )
+  if (hasTlsFiles && !secureProtocol) {
+    throw new Error('Custom TLS files require mqtts or wss.')
+  }
+  if (Boolean(config.clientCertificatePath) !== Boolean(config.clientKeyPath)) {
+    throw new Error('Client certificate and private key must be selected together.')
+  }
+
+  if (config.caPath) options.ca = await readFile(config.caPath)
+  if (config.clientCertificatePath) options.cert = await readFile(config.clientCertificatePath)
+  if (config.clientKeyPath) options.key = await readFile(config.clientKeyPath)
+  if (config.clientKeyPassphrase) options.passphrase = config.clientKeyPassphrase
+  return options
+}
 
 export class MqttService {
   private client: MqttClient | undefined
@@ -27,18 +61,7 @@ export class MqttService {
     this.validateConfig(config)
     this.statusListener({ state: 'connecting', detail: this.describeEndpoint(config) })
 
-    const options: IClientOptions = {
-      clientId: config.clientId || undefined,
-      username: config.username || undefined,
-      password: config.password || undefined,
-      protocolVersion: config.mqttVersion,
-      clean: config.clean,
-      keepalive: config.keepalive,
-      reconnectPeriod: config.reconnectPeriod,
-      connectTimeout: 15_000,
-      rejectUnauthorized: config.rejectUnauthorized,
-      resubscribe: true
-    }
+    const options = await createClientOptions(config)
 
     const client = mqtt.connect(this.buildUrl(config), options)
     this.client = client

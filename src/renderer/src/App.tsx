@@ -10,10 +10,11 @@ import {
 } from './components/icons'
 import { MessageTimeline } from './components/MessageTimeline'
 import { PublishComposer } from './components/PublishComposer'
+import { ReplayDialog } from './components/ReplayDialog'
 import { SubscriptionPanel } from './components/SubscriptionPanel'
 import { useMqttSession } from './hooks/use-mqtt-session'
 import { filterMessages, formatBytes } from '../../shared/message'
-import type { ConnectionState } from '../../shared/contracts'
+import type { CaptureFile, ConnectionState } from '../../shared/contracts'
 import { isCaptureFile } from '../../shared/capture'
 
 const statusLabels: Record<ConnectionState, string> = {
@@ -28,6 +29,7 @@ const statusLabels: Record<ConnectionState, string> = {
 export default function App() {
   const session = useMqttSession()
   const [query, setQuery] = useState('')
+  const [replayCapture, setReplayCapture] = useState<CaptureFile | null>(null)
   const captureInputRef = useRef<HTMLInputElement>(null)
   const connected = session.status.state === 'connected'
   const connecting = session.status.state === 'connecting' || session.status.state === 'reconnecting'
@@ -63,7 +65,8 @@ export default function App() {
         session.reportError('The selected file is not a supported MQTTape v1 capture.')
         return
       }
-      await session.replayCapture(parsed)
+      session.resetReplay()
+      setReplayCapture(parsed)
     } catch (reason) {
       session.reportError(reason instanceof Error ? reason.message : String(reason))
     }
@@ -105,12 +108,18 @@ export default function App() {
             connecting={connecting}
             busy={session.busy}
             isDesktop={session.isDesktop}
+            profiles={session.profiles}
+            selectedProfileId={session.selectedProfileId}
             onChange={session.setConfig}
             onConnect={session.connect}
             onDisconnect={session.disconnect}
+            onSelectProfile={session.selectProfile}
+            onSaveProfile={() => void session.saveProfile()}
+            onDeleteProfile={() => void session.deleteProfile()}
+            onSelectTlsFile={session.selectTlsFile}
           />
           <SubscriptionPanel
-            connected={connected}
+            connected={connected && !session.busy}
             subscriptions={session.subscriptions}
             onSubscribe={session.subscribe}
             onUnsubscribe={session.unsubscribe}
@@ -192,7 +201,7 @@ export default function App() {
                 <button
                   className="secondary-button"
                   type="button"
-                  disabled={session.messages.length === 0}
+                  disabled={session.messages.length === 0 || session.busy}
                   onClick={exportCapture}
                 >
                   <DownloadIcon />
@@ -211,7 +220,7 @@ export default function App() {
             </div>
           </section>
 
-          <PublishComposer connected={connected} onPublish={session.publish} />
+          <PublishComposer connected={connected && !session.busy} onPublish={session.publish} />
         </main>
       </div>
 
@@ -225,6 +234,21 @@ export default function App() {
             <XIcon />
           </button>
         </div>
+      )}
+
+      {replayCapture && (
+        <ReplayDialog
+          capture={replayCapture}
+          progress={session.replayProgress}
+          onStart={(options) => void session.startReplay(replayCapture, options)}
+          onPause={session.pauseReplay}
+          onResume={session.resumeReplay}
+          onCancel={session.cancelReplay}
+          onClose={() => {
+            session.resetReplay()
+            setReplayCapture(null)
+          }}
+        />
       )}
     </div>
   )
