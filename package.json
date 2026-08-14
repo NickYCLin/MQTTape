@@ -4,7 +4,10 @@
   "description": "Capture, inspect, and replay MQTT traffic.",
   "type": "module",
   "main": "out/main/index.js",
-  "author": "NickYCLin",
+  "author": {
+    "name": "NickYCLin",
+    "email": "113652814+NickYCLin@users.noreply.github.com"
+  },
   "license": "MIT",
   "scripts": {
     "dev": "electron-vite dev",
