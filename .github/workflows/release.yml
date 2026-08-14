@@ -38,5 +38,38 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: MQTTape-${{ matrix.target }}
-          path: release/*
+          path: |
+            release/*.exe
+            release/*.dmg
+            release/*.zip
+            release/*.AppImage
+            release/*.deb
           if-no-files-found: error
+
+  publish:
+    name: Publish GitHub Release
+    needs: package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download packages
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_NOTES: |
+            本版本提供桌面版 MQTT 除錯、訊息時間軸、Capture 匯出與重播，
+            以及僅使用 WebSocket 的 Web Lite 版本。
+
+            Windows 與 macOS 安裝檔目前尚未進行程式碼簽章，作業系統可能顯示
+            SmartScreen 或 Gatekeeper 警告。請只從本 GitHub Release 下載。
+        run: |
+          gh release create "$GITHUB_REF_NAME" artifacts/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "MQTTape $GITHUB_REF_NAME" \
+            --notes "$RELEASE_NOTES" \
+            --verify-tag
