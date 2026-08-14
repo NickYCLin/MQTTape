@@ -92,3 +92,25 @@ export function XIcon(props: IconProps) {
     </svg>
   )
 }
+
+export function TimelineIcon(props: IconProps) {
+  return (
+    <svg {...baseProps} {...props}>
+      <path d="M4 6h16M4 12h16M4 18h16" />
+      <circle cx="8" cy="6" r="1.5" fill="currentColor" stroke="none" />
+      <circle cx="15" cy="12" r="1.5" fill="currentColor" stroke="none" />
+      <circle cx="11" cy="18" r="1.5" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}
+
+export function TopicTreeIcon(props: IconProps) {
+  return (
+    <svg {...baseProps} {...props}>
+      <circle cx="6" cy="5" r="2" />
+      <circle cx="17" cy="9" r="2" />
+      <circle cx="17" cy="18" r="2" />
+      <path d="M6 7v8a3 3 0 0 0 3 3h6M8 9h7" />
+    </svg>
+  )
+}

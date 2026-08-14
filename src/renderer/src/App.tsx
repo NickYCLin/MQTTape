@@ -4,6 +4,8 @@ import {
   DownloadIcon,
   SearchIcon,
   TapeIcon,
+  TimelineIcon,
+  TopicTreeIcon,
   TrashIcon,
   UploadIcon,
   XIcon
@@ -12,6 +14,7 @@ import { MessageTimeline } from './components/MessageTimeline'
 import { PublishComposer } from './components/PublishComposer'
 import { ReplayDialog } from './components/ReplayDialog'
 import { SubscriptionPanel } from './components/SubscriptionPanel'
+import { TopicExplorer } from './components/TopicExplorer'
 import { useMqttSession } from './hooks/use-mqtt-session'
 import { filterMessages, formatBytes } from '../../shared/message'
 import type { CaptureFile, ConnectionState } from '../../shared/contracts'
@@ -29,6 +32,7 @@ const statusLabels: Record<ConnectionState, string> = {
 export default function App() {
   const session = useMqttSession()
   const [query, setQuery] = useState('')
+  const [activeView, setActiveView] = useState<'timeline' | 'topics'>('timeline')
   const [replayCapture, setReplayCapture] = useState<CaptureFile | null>(null)
   const captureInputRef = useRef<HTMLInputElement>(null)
   const connected = session.status.state === 'connected'
@@ -153,16 +157,36 @@ export default function App() {
           <section className="timeline-panel">
             <div className="timeline-toolbar">
               <div>
-                <span className="eyebrow">LIVE SESSION</span>
-                <h2>Message timeline</h2>
+                <span className="eyebrow">{activeView === 'timeline' ? 'LIVE SESSION' : 'TOPIC EXPLORER'}</span>
+                <h2>{activeView === 'timeline' ? 'Message timeline' : 'Topic tree & retained values'}</h2>
               </div>
               <div className="toolbar-actions">
+                <div className="view-switcher" aria-label="Session view">
+                  <button
+                    className={activeView === 'timeline' ? 'active' : ''}
+                    type="button"
+                    aria-pressed={activeView === 'timeline'}
+                    onClick={() => setActiveView('timeline')}
+                  >
+                    <TimelineIcon />
+                    Timeline
+                  </button>
+                  <button
+                    className={activeView === 'topics' ? 'active' : ''}
+                    type="button"
+                    aria-pressed={activeView === 'topics'}
+                    onClick={() => setActiveView('topics')}
+                  >
+                    <TopicTreeIcon />
+                    Topics
+                  </button>
+                </div>
                 <label className="search-box">
                   <SearchIcon />
                   <input
                     value={query}
-                    placeholder="Filter topic or payload"
-                    aria-label="Filter messages"
+                    placeholder={activeView === 'timeline' ? 'Filter topic or payload' : 'Find observed topics'}
+                    aria-label={activeView === 'timeline' ? 'Filter messages' : 'Filter topics'}
                     onChange={(event) => setQuery(event.target.value)}
                   />
                   {query && (
@@ -210,13 +234,24 @@ export default function App() {
               </div>
             </div>
 
-            {query && (
+            {query && activeView === 'timeline' && (
               <div className="filter-result">
                 Showing {visibleMessages.length} of {session.messages.length} messages
               </div>
             )}
-            <div className="timeline-scroll">
-              <MessageTimeline messages={visibleMessages} />
+            <div className={`timeline-scroll ${activeView === 'topics' ? 'topic-scroll' : ''}`}>
+              {activeView === 'timeline' ? (
+                <MessageTimeline messages={visibleMessages} />
+              ) : (
+                <TopicExplorer
+                  messages={session.messages}
+                  query={query}
+                  onInspectTopic={(topic) => {
+                    setQuery(topic)
+                    setActiveView('timeline')
+                  }}
+                />
+              )}
             </div>
           </section>
 
