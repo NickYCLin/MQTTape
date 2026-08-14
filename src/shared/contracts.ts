@@ -1,6 +1,7 @@
 export type MqttProtocol = 'mqtt' | 'mqtts' | 'ws' | 'wss'
 export type MqttQos = 0 | 1 | 2
 export type MqttVersion = 4 | 5
+export type TlsFileKind = 'ca' | 'certificate' | 'key'
 export type ConnectionState =
   | 'disconnected'
   | 'connecting'
@@ -23,6 +24,10 @@ export interface ConnectionConfig {
   keepalive: number
   reconnectPeriod: number
   rejectUnauthorized: boolean
+  caPath: string
+  clientCertificatePath: string
+  clientKeyPath: string
+  clientKeyPassphrase: string
 }
 
 export interface PublishRequest {
@@ -60,8 +65,37 @@ export interface CaptureFile {
   format: 'mqttape-capture'
   version: 1
   exportedAt: string
-  connection: Omit<ConnectionConfig, 'password'>
+  connection: Omit<
+    ConnectionConfig,
+    'password' | 'caPath' | 'clientCertificatePath' | 'clientKeyPath' | 'clientKeyPassphrase'
+  >
   messages: MqttMessageRecord[]
+}
+
+export interface BrokerProfile {
+  id: string
+  config: ConnectionConfig
+  secretsStored: boolean
+}
+
+export interface SaveBrokerProfileRequest {
+  id?: string
+  config: ConnectionConfig
+}
+
+export interface ReplayOptions {
+  includeIncoming: boolean
+  includeOutgoing: boolean
+  speed: number
+}
+
+export type ReplayState = 'idle' | 'running' | 'paused' | 'completed' | 'cancelled'
+
+export interface ReplayProgress {
+  state: ReplayState
+  sent: number
+  total: number
+  currentTopic?: string
 }
 
 export interface MqttapeBridge {
@@ -71,6 +105,10 @@ export interface MqttapeBridge {
   unsubscribe(topic: string): Promise<void>
   publish(request: PublishRequest): Promise<void>
   saveCapture(capture: CaptureFile): Promise<boolean>
+  listProfiles(): Promise<BrokerProfile[]>
+  saveProfile(request: SaveBrokerProfileRequest): Promise<BrokerProfile>
+  deleteProfile(id: string): Promise<void>
+  selectTlsFile(kind: TlsFileKind): Promise<string | null>
   onStatus(listener: (event: StatusEvent) => void): () => void
   onMessage(listener: (message: MqttMessageRecord) => void): () => void
 }

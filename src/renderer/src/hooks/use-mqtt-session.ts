@@ -1,19 +1,90 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type {
+  BrokerProfile,
   CaptureFile,
   ConnectionConfig,
   MqttMessageRecord,
   MqttQos,
-  StatusEvent
+  ReplayOptions,
+  ReplayProgress,
+  StatusEvent,
+  TlsFileKind
 } from '../../../shared/contracts'
+import { replayDelay, replayTimingScale, selectReplayMessages } from '../../../shared/replay'
 import { MqttController } from '../lib/mqtt-controller'
 
 const MAX_MESSAGES = 5_000
+const WEB_PROFILE_KEY = 'mqttape:profiles:v1'
 
-function withoutPassword(config: ConnectionConfig): Omit<ConnectionConfig, 'password'> {
+interface ReplayControl {
+  cancelled: boolean
+  paused: boolean
+  wake?: () => void
+}
+
+const idleReplay: ReplayProgress = { state: 'idle', sent: 0, total: 0 }
+
+class ReplayCancelledError extends Error {}
+
+async function waitUntilReplayResumes(control: ReplayControl): Promise<void> {
+  if (!control.paused) return
+  await new Promise<void>((resolve) => {
+    control.wake = resolve
+  })
+  control.wake = undefined
+}
+
+async function waitForReplayDelay(milliseconds: number, control: ReplayControl): Promise<void> {
+  let remaining = milliseconds
+  while (remaining > 0) {
+    if (control.cancelled) throw new ReplayCancelledError()
+    await waitUntilReplayResumes(control)
+    if (control.cancelled) throw new ReplayCancelledError()
+
+    const slice = Math.min(remaining, 100)
+    await new Promise((resolve) => window.setTimeout(resolve, slice))
+    if (!control.paused) remaining -= slice
+  }
+}
+
+function captureConnection(config: ConnectionConfig): CaptureFile['connection'] {
   const safeConfig: Partial<ConnectionConfig> = { ...config }
   delete safeConfig.password
-  return safeConfig as Omit<ConnectionConfig, 'password'>
+  delete safeConfig.caPath
+  delete safeConfig.clientCertificatePath
+  delete safeConfig.clientKeyPath
+  delete safeConfig.clientKeyPassphrase
+  return safeConfig as CaptureFile['connection']
+}
+
+function webSafeConfig(config: ConnectionConfig): ConnectionConfig {
+  return {
+    ...config,
+    password: '',
+    rejectUnauthorized: true,
+    caPath: '',
+    clientCertificatePath: '',
+    clientKeyPath: '',
+    clientKeyPassphrase: ''
+  }
+}
+
+function readWebProfiles(): BrokerProfile[] {
+  try {
+    const parsed: unknown = JSON.parse(window.localStorage.getItem(WEB_PROFILE_KEY) || '[]')
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter((profile): profile is BrokerProfile =>
+      Boolean(
+        profile &&
+        typeof profile === 'object' &&
+        typeof profile.id === 'string' &&
+        profile.config &&
+        typeof profile.config.name === 'string'
+      )
+    ).map((profile) => ({ ...profile, config: webSafeConfig(profile.config), secretsStored: false }))
+  } catch {
+    return []
+  }
 }
 
 function defaultConfig(isDesktop: boolean): ConnectionConfig {
@@ -30,7 +101,11 @@ function defaultConfig(isDesktop: boolean): ConnectionConfig {
     clean: true,
     keepalive: 60,
     reconnectPeriod: 1_000,
-    rejectUnauthorized: true
+    rejectUnauthorized: true,
+    caPath: '',
+    clientCertificatePath: '',
+    clientKeyPath: '',
+    clientKeyPassphrase: ''
   }
 }
 
@@ -45,6 +120,10 @@ export function useMqttSession() {
   const [subscriptions, setSubscriptions] = useState<Map<string, MqttQos>>(new Map())
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [profiles, setProfiles] = useState<BrokerProfile[]>([])
+  const [selectedProfileId, setSelectedProfileId] = useState('')
+  const [replayProgress, setReplayProgress] = useState<ReplayProgress>(idleReplay)
+  const replayControlRef = useRef<ReplayControl | null>(null)
 
   useEffect(() => {
     controller.activate()
@@ -57,11 +136,31 @@ export function useMqttSession() {
     })
 
     return () => {
+      if (replayControlRef.current) {
+        replayControlRef.current.cancelled = true
+        replayControlRef.current.wake?.()
+      }
       removeStatus()
       removeMessage()
       controller.destroy()
     }
   }, [controller])
+
+  useEffect(() => {
+    let mounted = true
+    const loadProfiles = async (): Promise<void> => {
+      try {
+        const loaded = window.mqttape
+          ? await window.mqttape.listProfiles()
+          : readWebProfiles()
+        if (mounted) setProfiles(loaded)
+      } catch (reason) {
+        if (mounted) setError(reason instanceof Error ? reason.message : String(reason))
+      }
+    }
+    void loadProfiles()
+    return () => { mounted = false }
+  }, [])
 
   const run = useCallback(async (operation: () => Promise<void>): Promise<boolean> => {
     setBusy(true)
@@ -74,6 +173,82 @@ export function useMqttSession() {
       return false
     } finally {
       setBusy(false)
+    }
+  }, [])
+
+  const selectProfile = useCallback((id: string) => {
+    setSelectedProfileId(id)
+    if (!id) {
+      setConfig(defaultConfig(controller.isDesktop))
+      return
+    }
+    const profile = profiles.find((candidate) => candidate.id === id)
+    if (profile) setConfig({ ...profile.config })
+  }, [controller.isDesktop, profiles])
+
+  const saveProfile = useCallback(async () => {
+    if (!config.name.trim()) {
+      setError('Profile name is required.')
+      return false
+    }
+
+    let savedProfile: BrokerProfile | undefined
+    const succeeded = await run(async () => {
+      if (window.mqttape) {
+        savedProfile = await window.mqttape.saveProfile({
+          id: selectedProfileId || undefined,
+          config
+        })
+        return
+      }
+
+      savedProfile = {
+        id: selectedProfileId || window.crypto.randomUUID(),
+        config: webSafeConfig({ ...config, name: config.name.trim() }),
+        secretsStored: false
+      }
+      const next = profiles.filter((profile) => profile.id !== savedProfile!.id)
+      next.push(savedProfile)
+      window.localStorage.setItem(WEB_PROFILE_KEY, JSON.stringify(next))
+    })
+
+    if (!succeeded || !savedProfile) return false
+    setProfiles((current) => {
+      const next = current.filter((profile) => profile.id !== savedProfile!.id)
+      next.push(savedProfile!)
+      return next.sort((left, right) => left.config.name.localeCompare(right.config.name))
+    })
+    setSelectedProfileId(savedProfile.id)
+    if (window.mqttape && (config.password || config.clientKeyPassphrase) && !savedProfile.secretsStored) {
+      setError('Profile saved, but secure OS storage is unavailable; secrets were not stored.')
+    }
+    return true
+  }, [config, profiles, run, selectedProfileId])
+
+  const deleteProfile = useCallback(async () => {
+    if (!selectedProfileId) return false
+    const succeeded = await run(async () => {
+      if (window.mqttape) await window.mqttape.deleteProfile(selectedProfileId)
+      else {
+        const next = profiles.filter((profile) => profile.id !== selectedProfileId)
+        window.localStorage.setItem(WEB_PROFILE_KEY, JSON.stringify(next))
+      }
+    })
+    if (succeeded) {
+      setProfiles((current) => current.filter((profile) => profile.id !== selectedProfileId))
+      setSelectedProfileId('')
+      setConfig(defaultConfig(controller.isDesktop))
+    }
+    return succeeded
+  }, [controller.isDesktop, profiles, run, selectedProfileId])
+
+  const selectTlsFile = useCallback(async (kind: TlsFileKind): Promise<string | null> => {
+    if (!window.mqttape) return null
+    try {
+      return await window.mqttape.selectTlsFile(kind)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason))
+      return null
     }
   }, [])
 
@@ -126,36 +301,49 @@ export function useMqttSession() {
     [controller, run]
   )
 
-  const replayCapture = useCallback(
-    async (capture: CaptureFile) => {
+  const startReplay = useCallback(
+    async (capture: CaptureFile, options: ReplayOptions) => {
       if (status.state !== 'connected') {
         setError('Connect to a broker before replaying a capture.')
         return false
       }
-      if (capture.messages.length === 0) {
-        setError('This capture contains no messages.')
+      if (replayControlRef.current) {
+        setError('A replay is already running.')
         return false
       }
 
-      return run(async () => {
-        const messagesToReplay = capture.messages.slice(0, MAX_MESSAGES)
-        const firstTime = new Date(messagesToReplay[0].timestamp).getTime()
-        const lastTime = new Date(messagesToReplay.at(-1)!.timestamp).getTime()
-        const captureDuration = Number.isFinite(lastTime - firstTime)
-          ? Math.max(0, lastTime - firstTime)
-          : 0
-        const timingScale = captureDuration > 30_000 ? 30_000 / captureDuration : 1
-        let previousTime = new Date(messagesToReplay[0].timestamp).getTime()
+      const messagesToReplay = selectReplayMessages(capture.messages, options)
+      if (messagesToReplay.length === 0) {
+        setError('Select at least one message direction that exists in this capture.')
+        return false
+      }
 
-        for (const message of messagesToReplay) {
-          const messageTime = new Date(message.timestamp).getTime()
-          const rawDelay = Number.isFinite(messageTime - previousTime)
-            ? Math.max(0, messageTime - previousTime)
-            : 0
-          const safeDelay = Math.min(rawDelay * timingScale, 2_000)
-          if (safeDelay > 0) {
-            await new Promise((resolve) => window.setTimeout(resolve, safeDelay))
+      const control: ReplayControl = { cancelled: false, paused: false }
+      replayControlRef.current = control
+      setBusy(true)
+      setError('')
+      setReplayProgress({ state: 'running', sent: 0, total: messagesToReplay.length })
+
+      try {
+        const timingScale = replayTimingScale(messagesToReplay)
+        let previousTimestamp = messagesToReplay[0].timestamp
+
+        for (const [index, message] of messagesToReplay.entries()) {
+          if (control.cancelled) throw new ReplayCancelledError()
+          if (index > 0) {
+            await waitForReplayDelay(
+              replayDelay(previousTimestamp, message.timestamp, timingScale, options.speed),
+              control
+            )
           }
+
+          await waitUntilReplayResumes(control)
+          if (control.cancelled) throw new ReplayCancelledError()
+          setReplayProgress((current) => ({
+            ...current,
+            state: 'running',
+            currentTopic: message.topic
+          }))
           await controller.publish({
             topic: message.topic,
             payload: message.payloadText,
@@ -163,12 +351,63 @@ export function useMqttSession() {
             qos: message.qos,
             retain: message.retain
           })
-          previousTime = messageTime
+          previousTimestamp = message.timestamp
+          setReplayProgress({
+            state: 'running',
+            sent: index + 1,
+            total: messagesToReplay.length,
+            currentTopic: message.topic
+          })
         }
-      })
+
+        setReplayProgress({
+          state: 'completed',
+          sent: messagesToReplay.length,
+          total: messagesToReplay.length
+        })
+        return true
+      } catch (reason) {
+        if (reason instanceof ReplayCancelledError) {
+          setReplayProgress((current) => ({ ...current, state: 'cancelled' }))
+          return false
+        }
+        setError(reason instanceof Error ? reason.message : String(reason))
+        setReplayProgress((current) => ({ ...current, state: 'cancelled' }))
+        return false
+      } finally {
+        if (replayControlRef.current === control) replayControlRef.current = null
+        setBusy(false)
+      }
     },
-    [controller, run, status.state]
+    [controller, status.state]
   )
+
+  const pauseReplay = useCallback(() => {
+    const control = replayControlRef.current
+    if (!control || control.paused) return
+    control.paused = true
+    setReplayProgress((current) => ({ ...current, state: 'paused' }))
+  }, [])
+
+  const resumeReplay = useCallback(() => {
+    const control = replayControlRef.current
+    if (!control || !control.paused) return
+    control.paused = false
+    control.wake?.()
+    setReplayProgress((current) => ({ ...current, state: 'running' }))
+  }, [])
+
+  const cancelReplay = useCallback(() => {
+    const control = replayControlRef.current
+    if (!control) return
+    control.cancelled = true
+    control.paused = false
+    control.wake?.()
+  }, [])
+
+  const resetReplay = useCallback(() => {
+    if (!replayControlRef.current) setReplayProgress(idleReplay)
+  }, [])
 
   const stats = useMemo(() => {
     let incoming = 0
@@ -187,7 +426,7 @@ export function useMqttSession() {
       format: 'mqttape-capture',
       version: 1,
       exportedAt: new Date().toISOString(),
-      connection: withoutPassword(config),
+      connection: captureConnection(config),
       messages: [...messages].reverse()
     }
   }, [config, messages])
@@ -196,6 +435,12 @@ export function useMqttSession() {
     isDesktop: controller.isDesktop,
     config,
     setConfig,
+    profiles,
+    selectedProfileId,
+    selectProfile,
+    saveProfile,
+    deleteProfile,
+    selectTlsFile,
     status,
     messages,
     subscriptions,
@@ -209,7 +454,12 @@ export function useMqttSession() {
     subscribe,
     unsubscribe,
     publish,
-    replayCapture,
+    replayProgress,
+    startReplay,
+    pauseReplay,
+    resumeReplay,
+    cancelReplay,
+    resetReplay,
     clearMessages: () => setMessages([]),
     makeCapture
   }

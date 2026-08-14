@@ -1,5 +1,10 @@
 import type { FormEvent } from 'react'
-import type { ConnectionConfig, MqttProtocol } from '../../../shared/contracts'
+import type {
+  BrokerProfile,
+  ConnectionConfig,
+  MqttProtocol,
+  TlsFileKind
+} from '../../../shared/contracts'
 import { PlugIcon } from './icons'
 
 interface ConnectionPanelProps {
@@ -8,9 +13,15 @@ interface ConnectionPanelProps {
   connecting: boolean
   busy: boolean
   isDesktop: boolean
+  profiles: BrokerProfile[]
+  selectedProfileId: string
   onChange: (config: ConnectionConfig) => void
   onConnect: () => void
   onDisconnect: () => void
+  onSelectProfile: (id: string) => void
+  onSaveProfile: () => void
+  onDeleteProfile: () => void
+  onSelectTlsFile: (kind: TlsFileKind) => Promise<string | null>
 }
 
 const defaultPorts: Record<MqttProtocol, number> = {
@@ -26,9 +37,15 @@ export function ConnectionPanel({
   connecting,
   busy,
   isDesktop,
+  profiles,
+  selectedProfileId,
   onChange,
   onConnect,
-  onDisconnect
+  onDisconnect,
+  onSelectProfile,
+  onSaveProfile,
+  onDeleteProfile,
+  onSelectTlsFile
 }: ConnectionPanelProps) {
   const update = <Key extends keyof ConnectionConfig>(
     key: Key,
@@ -37,6 +54,14 @@ export function ConnectionPanel({
 
   const changeProtocol = (protocol: MqttProtocol): void => {
     onChange({ ...config, protocol, port: defaultPorts[protocol] })
+  }
+
+  const chooseTlsFile = async (
+    field: 'caPath' | 'clientCertificatePath' | 'clientKeyPath',
+    kind: TlsFileKind
+  ): Promise<void> => {
+    const path = await onSelectTlsFile(kind)
+    if (path) update(field, path)
   }
 
   const submit = (event: FormEvent): void => {
@@ -54,7 +79,36 @@ export function ConnectionPanel({
         <span className="mode-badge">{isDesktop ? 'DESKTOP' : 'WEB LITE'}</span>
       </div>
 
+      <div className="profile-controls">
+        <select
+          aria-label="Saved broker profile"
+          value={selectedProfileId}
+          disabled={connected || connecting || busy}
+          onChange={(event) => onSelectProfile(event.target.value)}
+        >
+          <option value="">New unsaved profile</option>
+          {profiles.map((profile) => (
+            <option value={profile.id} key={profile.id}>{profile.config.name}</option>
+          ))}
+        </select>
+        <button type="button" disabled={busy || !config.name.trim()} onClick={onSaveProfile}>
+          Save
+        </button>
+        <button type="button" disabled={busy || !selectedProfileId} onClick={onDeleteProfile}>
+          Delete
+        </button>
+      </div>
+
       <div className="field-grid">
+        <label className="field profile-name-field">
+          <span>Profile name</span>
+          <input
+            value={config.name}
+            disabled={connected || connecting}
+            placeholder="Local broker"
+            onChange={(event) => update('name', event.target.value)}
+          />
+        </label>
         <label className="field protocol-field">
           <span>Protocol</span>
           <select
@@ -171,7 +225,7 @@ export function ConnectionPanel({
             />
             <span>Clean session</span>
           </label>
-          {(config.protocol === 'mqtts' || config.protocol === 'wss') && (
+          {isDesktop && (config.protocol === 'mqtts' || config.protocol === 'wss') && (
             <label className="check-field">
               <input
                 type="checkbox"
@@ -182,6 +236,45 @@ export function ConnectionPanel({
               <span>Verify TLS certificate</span>
             </label>
           )}
+          {isDesktop && (config.protocol === 'mqtts' || config.protocol === 'wss') && (
+            <div className="tls-settings">
+              <span className="tls-heading">mTLS certificates</span>
+              <div className="tls-file-row">
+                <label className="field">
+                  <span>Custom CA</span>
+                  <input readOnly value={config.caPath} placeholder="Use system trust store" />
+                </label>
+                <button type="button" disabled={connected || connecting} onClick={() => void chooseTlsFile('caPath', 'ca')}>Select</button>
+                {config.caPath && <button type="button" disabled={connected || connecting} onClick={() => update('caPath', '')}>Clear</button>}
+              </div>
+              <div className="tls-file-row">
+                <label className="field">
+                  <span>Client certificate</span>
+                  <input readOnly value={config.clientCertificatePath} placeholder="Optional PEM or CRT" />
+                </label>
+                <button type="button" disabled={connected || connecting} onClick={() => void chooseTlsFile('clientCertificatePath', 'certificate')}>Select</button>
+                {config.clientCertificatePath && <button type="button" disabled={connected || connecting} onClick={() => update('clientCertificatePath', '')}>Clear</button>}
+              </div>
+              <div className="tls-file-row">
+                <label className="field">
+                  <span>Client private key</span>
+                  <input readOnly value={config.clientKeyPath} placeholder="Optional KEY or PEM" />
+                </label>
+                <button type="button" disabled={connected || connecting} onClick={() => void chooseTlsFile('clientKeyPath', 'key')}>Select</button>
+                {config.clientKeyPath && <button type="button" disabled={connected || connecting} onClick={() => update('clientKeyPath', '')}>Clear</button>}
+              </div>
+              <label className="field">
+                <span>Private key passphrase</span>
+                <input
+                  type="password"
+                  value={config.clientKeyPassphrase}
+                  disabled={connected || connecting}
+                  placeholder="Optional · stored securely with profile"
+                  onChange={(event) => update('clientKeyPassphrase', event.target.value)}
+                />
+              </label>
+            </div>
+          )}
         </div>
       </details>
 
@@ -189,7 +282,7 @@ export function ConnectionPanel({
         className={`primary-button ${connected ? 'disconnect-button' : ''}`}
         type={connected ? 'button' : 'submit'}
         disabled={busy}
-        onClick={connected ? onDisconnect : onConnect}
+        onClick={connected ? onDisconnect : undefined}
       >
         <PlugIcon />
         {connecting ? 'Connecting…' : connected ? 'Disconnect' : 'Connect'}
