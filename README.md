@@ -14,9 +14,12 @@ message timeline and portable capture files.
 - QoS 0, 1, and 2 publish/subscribe
 - Retained messages, clean sessions, and automatic reconnect
 - Searchable inbound/outbound message timeline
+- Session-derived topic tree with hierarchy, traffic counts, and latest payloads
+- Retained-value snapshot that recognizes empty retained-message tombstones
 - JSON payload formatting and session statistics
 - Export sanitized MQTTape capture files without passwords
 - Preview captures before replay, select message directions, and control speed
+- Safely remap a complete topic prefix with a before/after preview
 - Pause, resume, or cancel a replay while preserving recorded ordering
 - Saved broker profiles with encrypted desktop secrets
 - Custom CA and client certificate/key selection for desktop mTLS
@@ -113,6 +116,21 @@ speed, and can be paused or cancelled. Each delay is capped at two seconds and
 the complete timing window is compressed to at most 30 seconds, preventing an
 old capture from unexpectedly waiting for hours.
 
+Topic prefix remapping can redirect a capture away from production topics before
+replay. MQTTape replaces only complete prefix boundaries, previews the changed
+topics, and blocks empty, wildcard, null-character, or oversized publish topics.
+
+## Topic Explorer
+
+The Topics view groups traffic observed during the current session into an MQTT
+topic hierarchy. Each level shows aggregate incoming/outgoing counts, the latest
+payload, and retained state. Clicking a topic opens its matching timeline.
+
+The retained panel is intentionally a **session-derived snapshot**, not a full
+broker inventory: MQTT has no standard command for enumerating every topic on a
+broker. MQTTape adds retained values it observes or publishes and removes them
+when it sees an empty retained publish (the MQTT retained-message tombstone).
+
 ## Security
 
 - Electron renderer processes have no Node.js integration.
@@ -126,8 +144,7 @@ Please report vulnerabilities according to [SECURITY.md](SECURITY.md).
 
 ## Roadmap
 
-- Topic tree and retained-message snapshots
-- Replay topic remapping and reusable replay presets
+- Reusable replay presets and capture trimming
 - Hex, CBOR, Protobuf, and Sparkplug B payload viewers
 - MQTT 5 properties and QoS packet-flow inspection
 - Multiple simultaneous broker sessions
