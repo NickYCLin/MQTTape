@@ -1,0 +1,12 @@
+node_modules/
+out/
+dist-web/
+release/
+coverage/
+*.log
+.DS_Store
+.idea/
+.vscode/
+*.local
+.playwright-cli/
+output/playwright/
