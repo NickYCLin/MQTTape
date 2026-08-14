@@ -15,10 +15,13 @@ jobs:
         include:
           - runner: windows-latest
             target: win
+            args: --win --x64
           - runner: macos-latest
             target: mac
+            args: --mac --x64 --arm64
           - runner: ubuntu-latest
             target: linux
+            args: --linux --x64
     runs-on: ${{ matrix.runner }}
     steps:
       - name: Checkout
@@ -33,7 +36,7 @@ jobs:
       - name: Build application
         run: npm run build
       - name: Package ${{ matrix.target }}
-        run: npx electron-builder --${{ matrix.target }} --publish never
+        run: npx electron-builder ${{ matrix.args }} --publish never
       - name: Upload packages
         uses: actions/upload-artifact@v4
         with:
@@ -58,18 +61,22 @@ jobs:
         with:
           path: artifacts
           merge-multiple: true
+      - name: Generate SHA-256 checksums
+        working-directory: artifacts
+        run: sha256sum * > SHA256SUMS.txt
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_NOTES: |
-            本版本提供桌面版 MQTT 除錯、訊息時間軸、Capture 匯出與重播，
-            以及僅使用 WebSocket 的 Web Lite 版本。
+            MQTTape v0.2 adds safer replay controls, encrypted broker profiles,
+            desktop mTLS file selection, and a deployable Web Lite client.
 
-            Windows 與 macOS 安裝檔目前尚未進行程式碼簽章，作業系統可能顯示
-            SmartScreen 或 Gatekeeper 警告。請只從本 GitHub Release 下載。
+            Windows and macOS packages are unsigned. Review the repository and
+            checksum file before bypassing SmartScreen or Gatekeeper warnings.
         run: |
           gh release create "$GITHUB_REF_NAME" artifacts/* \
             --repo "$GITHUB_REPOSITORY" \
             --title "MQTTape $GITHUB_REF_NAME" \
             --notes "$RELEASE_NOTES" \
+            --generate-notes \
             --verify-tag

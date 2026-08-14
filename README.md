@@ -16,7 +16,10 @@ message timeline and portable capture files.
 - Searchable inbound/outbound message timeline
 - JSON payload formatting and session statistics
 - Export sanitized MQTTape capture files without passwords
-- Replay captures with the recorded ordering and bounded timing
+- Preview captures before replay, select message directions, and control speed
+- Pause, resume, or cancel a replay while preserving recorded ordering
+- Saved broker profiles with encrypted desktop secrets
+- Custom CA and client certificate/key selection for desktop mTLS
 - Portable Windows build plus installers for Windows, macOS, and Linux
 
 > MQTTape is a client, not a broker. Connect it to Mosquitto, EMQX, HiveMQ, or
@@ -31,9 +34,27 @@ message timeline and portable capture files.
 | WebSocket (`ws://`) | Yes | Yes |
 | Secure WebSocket (`wss://`) | Yes | Yes |
 | Local capture export/replay | Yes | Yes |
+| Saved connection profiles | Encrypted secrets | No stored secrets |
+| Custom CA and mTLS | Yes | No |
 
 Browsers cannot open arbitrary TCP sockets, so Web Lite intentionally limits the
 protocol selector to WebSocket transports.
+
+Web Lite is published at <https://nickyclin.github.io/MQTTape/>. Because GitHub
+Pages uses HTTPS, remote brokers must normally expose a trusted `wss://` endpoint;
+browsers block insecure `ws://` connections from an HTTPS page.
+
+## Profiles and mTLS
+
+Desktop profiles are stored in the Electron user-data directory. Passwords and
+private-key passphrases are encrypted with the operating system through Electron
+`safeStorage`; MQTTape never falls back to plaintext secret storage. Web Lite can
+save non-secret connection settings in browser storage but intentionally drops
+passwords and certificate paths.
+
+TLS files must be selected with MQTTape's file picker. A client certificate and
+private key must be configured together, while a custom CA is optional. Capture
+exports omit passwords, passphrases, and every local certificate path.
 
 ## Development
 
@@ -85,29 +106,33 @@ Capture files are versioned JSON documents with the format identifier
 `mqttape-capture`. Connection passwords are never included. Payloads are stored
 as Base64 so binary data can be replayed without loss.
 
-The initial replay engine preserves message order and relative delays. Each
-delay is capped at two seconds and the complete timing window is compressed to
-at most 30 seconds, preventing an old capture from unexpectedly waiting for
-hours. Replay publishes every captured message to the currently connected
-broker; review topics and retained flags before starting it.
+The replay preview defaults to outgoing messages only. Incoming messages can be
+included explicitly, and retained-message counts are shown before publishing.
+Replay preserves message order and relative delays, offers 0.25x through 4x
+speed, and can be paused or cancelled. Each delay is capped at two seconds and
+the complete timing window is compressed to at most 30 seconds, preventing an
+old capture from unexpectedly waiting for hours.
 
 ## Security
 
 - Electron renderer processes have no Node.js integration.
 - MQTT operations run behind a narrow, context-isolated preload API.
 - Broker passwords remain in memory and are excluded from capture exports.
+- Saved desktop secrets use operating-system-backed encryption with no plaintext fallback.
+- TLS files are restricted to paths explicitly selected by the user or loaded from a profile.
 - TLS certificate verification is enabled by default.
 
 Please report vulnerabilities according to [SECURITY.md](SECURITY.md).
 
 ## Roadmap
 
-- Client certificate selection for mTLS
-- Saved broker profiles backed by the operating-system credential vault
 - Topic tree and retained-message snapshots
-- Capture speed controls, pause/cancel, and topic remapping
+- Replay topic remapping and reusable replay presets
 - Hex, CBOR, Protobuf, and Sparkplug B payload viewers
 - MQTT 5 properties and QoS packet-flow inspection
+- Multiple simultaneous broker sessions
+- Last Will, custom WebSocket headers, and advanced authentication
+- Signed installers, automatic updates, and additional CPU architectures
 
 ## Contributing
 
