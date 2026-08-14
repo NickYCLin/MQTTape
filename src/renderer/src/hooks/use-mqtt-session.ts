@@ -10,7 +10,8 @@ import type {
   StatusEvent,
   TlsFileKind
 } from '../../../shared/contracts'
-import { replayDelay, replayTimingScale, selectReplayMessages } from '../../../shared/replay'
+import { publishTopicError } from '../../../shared/mqtt-topic'
+import { createReplayPlan, replayDelay, replayTimingScale } from '../../../shared/replay'
 import { MqttController } from '../lib/mqtt-controller'
 
 const MAX_MESSAGES = 5_000
@@ -292,11 +293,13 @@ export function useMqttSession() {
 
   const publish = useCallback(
     async (topic: string, payload: string, qos: MqttQos, retain: boolean) => {
-      if (!topic.trim()) {
-        setError('Publish topic is required.')
+      const normalizedTopic = topic.trim()
+      const topicError = publishTopicError(normalizedTopic)
+      if (topicError) {
+        setError(topicError)
         return false
       }
-      return run(() => controller.publish({ topic: topic.trim(), payload, qos, retain }))
+      return run(() => controller.publish({ topic: normalizedTopic, payload, qos, retain }))
     },
     [controller, run]
   )
@@ -312,9 +315,16 @@ export function useMqttSession() {
         return false
       }
 
-      const messagesToReplay = selectReplayMessages(capture.messages, options)
-      if (messagesToReplay.length === 0) {
+      const replayPlan = createReplayPlan(capture.messages, options)
+      if (replayPlan.length === 0) {
         setError('Select at least one message direction that exists in this capture.')
+        return false
+      }
+      const invalidPlanItem = replayPlan
+        .map((item) => ({ item, error: publishTopicError(item.topic) }))
+        .find(({ error: topicError }) => topicError)
+      if (invalidPlanItem) {
+        setError(`Invalid replay topic "${invalidPlanItem.item.topic}": ${invalidPlanItem.error}`)
         return false
       }
 
@@ -322,13 +332,15 @@ export function useMqttSession() {
       replayControlRef.current = control
       setBusy(true)
       setError('')
-      setReplayProgress({ state: 'running', sent: 0, total: messagesToReplay.length })
+      setReplayProgress({ state: 'running', sent: 0, total: replayPlan.length })
 
       try {
+        const messagesToReplay = replayPlan.map(({ message }) => message)
         const timingScale = replayTimingScale(messagesToReplay)
-        let previousTimestamp = messagesToReplay[0].timestamp
+        let previousTimestamp = replayPlan[0].message.timestamp
 
-        for (const [index, message] of messagesToReplay.entries()) {
+        for (const [index, planItem] of replayPlan.entries()) {
+          const { message, topic } = planItem
           if (control.cancelled) throw new ReplayCancelledError()
           if (index > 0) {
             await waitForReplayDelay(
@@ -342,10 +354,10 @@ export function useMqttSession() {
           setReplayProgress((current) => ({
             ...current,
             state: 'running',
-            currentTopic: message.topic
+            currentTopic: topic
           }))
           await controller.publish({
-            topic: message.topic,
+            topic,
             payload: message.payloadText,
             payloadBase64: message.payloadBase64,
             qos: message.qos,
@@ -355,15 +367,15 @@ export function useMqttSession() {
           setReplayProgress({
             state: 'running',
             sent: index + 1,
-            total: messagesToReplay.length,
-            currentTopic: message.topic
+            total: replayPlan.length,
+            currentTopic: topic
           })
         }
 
         setReplayProgress({
           state: 'completed',
-          sent: messagesToReplay.length,
-          total: messagesToReplay.length
+          sent: replayPlan.length,
+          total: replayPlan.length
         })
         return true
       } catch (reason) {

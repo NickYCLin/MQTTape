@@ -96,7 +96,7 @@ describe('MqttService integration', () => {
     await service.disconnect()
   })
 
-  it('delivers retained QoS 2 messages and honors unsubscribe', async () => {
+  it('delivers and clears retained QoS 2 messages, then honors unsubscribe', async () => {
     const publisher = new MqttService(() => undefined, () => undefined)
     const received: MqttMessageRecord[] = []
     const subscriber = new MqttService(() => undefined, (message) => received.push(message))
@@ -121,6 +121,15 @@ describe('MqttService integration', () => {
     await new Promise((resolve) => setTimeout(resolve, 150))
     expect(received).toHaveLength(receivedBeforePublish)
 
+    await publisher.publish({ topic, payload: '', qos: 1, retain: true })
+    const afterClear: MqttMessageRecord[] = []
+    const verifier = new MqttService(() => undefined, (message) => afterClear.push(message))
+    await verifier.connect(connectionConfig(port, 'mqttape_retained_verifier'))
+    await verifier.subscribe({ topic, qos: 1 })
+    await new Promise((resolve) => setTimeout(resolve, 150))
+    expect(afterClear).toEqual([])
+
+    await verifier.disconnect()
     await publisher.disconnect()
     await subscriber.disconnect()
   })

@@ -87,6 +87,12 @@ export interface ReplayOptions {
   includeIncoming: boolean
   includeOutgoing: boolean
   speed: number
+  topicRemap?: ReplayTopicRemap
+}
+
+export interface ReplayTopicRemap {
+  fromPrefix: string
+  toPrefix: string
 }
 
 export type ReplayState = 'idle' | 'running' | 'paused' | 'completed' | 'cancelled'

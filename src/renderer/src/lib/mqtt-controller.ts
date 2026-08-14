@@ -7,6 +7,7 @@ import type {
   StatusEvent,
   SubscribeRequest
 } from '../../../shared/contracts'
+import { publishTopicError } from '../../../shared/mqtt-topic'
 
 type StatusListener = (event: StatusEvent) => void
 type MessageListener = (message: MqttMessageRecord) => void
@@ -167,13 +168,16 @@ export class MqttController {
   async publish(request: PublishRequest): Promise<void> {
     if (window.mqttape) return window.mqttape.publish(request)
     const client = this.requireWebClient()
+    const topic = request.topic.trim()
+    const topicError = publishTopicError(topic)
+    if (topicError) throw new Error(topicError)
     const payload = request.payloadBase64
       ? Buffer.from(base64ToBytes(request.payloadBase64))
       : Buffer.from(request.payload, 'utf8')
 
     await new Promise<void>((resolve, reject) => {
       client.publish(
-        request.topic,
+        topic,
         payload,
         { qos: request.qos, retain: request.retain },
         (error) => {
@@ -185,7 +189,7 @@ export class MqttController {
             id: createId(),
             direction: 'outgoing',
             timestamp: new Date().toISOString(),
-            topic: request.topic,
+            topic,
             qos: request.qos,
             retain: request.retain,
             duplicate: false,

@@ -2,6 +2,22 @@
 
 All notable changes to MQTTape are documented in this file.
 
+## [0.3.0] - 2026-08-14
+
+### Added
+
+- Session-derived Topic Explorer with hierarchical topic navigation.
+- Incoming/outgoing traffic counts, latest payloads, and natural topic sorting.
+- Retained-value snapshots with empty retained-message tombstone handling.
+- Replay topic-prefix remapping with before/after previews and changed-message counts.
+- Shared MQTT publish-topic validation for normal publishes and replay plans.
+- Unit and real-broker coverage for topic trees, remapping, and retained deletion.
+
+### Changed
+
+- Topic rows and retained cards can open the corresponding filtered timeline.
+- Replay blocks invalid remapped destinations before publishing any message.
+
 ## [0.2.0] - 2026-08-14
 
 ### Added
@@ -31,5 +47,6 @@ All notable changes to MQTTape are documented in this file.
 - Searchable message timeline, JSON formatting, capture export, and replay.
 - Cross-platform packaging, CI, and automated GitHub Releases.
 
+[0.3.0]: https://github.com/NickYCLin/MQTTape/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/NickYCLin/MQTTape/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/NickYCLin/MQTTape/releases/tag/v0.1.0

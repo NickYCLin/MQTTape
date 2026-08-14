@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react'
 import type { CaptureFile, ReplayOptions, ReplayProgress } from '../../../shared/contracts'
 import { formatBytes } from '../../../shared/message'
+import { publishTopicError } from '../../../shared/mqtt-topic'
+import { createReplayPlan } from '../../../shared/replay'
 
 interface ReplayDialogProps {
   capture: CaptureFile
@@ -26,13 +28,27 @@ export function ReplayDialog({
   const [includeOutgoing, setIncludeOutgoing] = useState(true)
   const [includeIncoming, setIncludeIncoming] = useState(false)
   const [speed, setSpeed] = useState(1)
+  const [fromPrefix, setFromPrefix] = useState('')
+  const [toPrefix, setToPrefix] = useState('')
   const active = progress.state === 'running' || progress.state === 'paused'
-  const selectedMessages = useMemo(
-    () => capture.messages.filter((message) =>
-      message.direction === 'incoming' ? includeIncoming : includeOutgoing
-    ),
-    [capture.messages, includeIncoming, includeOutgoing]
+  const replayOptions = useMemo<ReplayOptions>(
+    () => ({
+      includeIncoming,
+      includeOutgoing,
+      speed,
+      topicRemap: fromPrefix || toPrefix ? { fromPrefix, toPrefix } : undefined
+    }),
+    [fromPrefix, includeIncoming, includeOutgoing, speed, toPrefix]
   )
+  const replayPlan = useMemo(
+    () => createReplayPlan(capture.messages, replayOptions),
+    [capture.messages, replayOptions]
+  )
+  const selectedMessages = replayPlan.map(({ message }) => message)
+  const remappedMessages = replayPlan.filter(({ remapped }) => remapped)
+  const invalidTopic = replayPlan
+    .map(({ topic }) => ({ topic, error: publishTopicError(topic) }))
+    .find(({ error }) => error)
   const outgoing = capture.messages.filter((message) => message.direction === 'outgoing').length
   const incoming = capture.messages.length - outgoing
   const retained = selectedMessages.filter((message) => message.retain).length
@@ -40,7 +56,7 @@ export function ReplayDialog({
   const percentage = progress.total === 0 ? 0 : Math.round((progress.sent / progress.total) * 100)
 
   const start = (): void => {
-    onStart({ includeIncoming, includeOutgoing, speed })
+    onStart(replayOptions)
   }
 
   return (
@@ -97,9 +113,65 @@ export function ReplayDialog({
           </label>
         </div>
 
-        <div className="replay-warning">
-          <strong>{retained > 0 ? `${retained} retained message(s) selected.` : 'No retained messages selected.'}</strong>
-          <span>{formatBytes(selectedBytes)} will be published to the currently connected broker.</span>
+        <div className="topic-remap-section">
+          <div className="topic-remap-heading">
+            <div>
+              <span className="eyebrow">OPTIONAL SAFETY ROUTING</span>
+              <h3>Topic prefix remapping</h3>
+            </div>
+            <span className="counter-badge">{remappedMessages.length.toLocaleString()} CHANGED</span>
+          </div>
+          <div className="topic-remap-fields">
+            <label>
+              <span>Source prefix</span>
+              <input
+                value={fromPrefix}
+                disabled={active}
+                placeholder="production/devices"
+                onChange={(event) => setFromPrefix(event.target.value)}
+              />
+            </label>
+            <span className="remap-arrow" aria-hidden="true">→</span>
+            <label>
+              <span>Target prefix</span>
+              <input
+                value={toPrefix}
+                disabled={active}
+                placeholder="sandbox/replay"
+                onChange={(event) => setToPrefix(event.target.value)}
+              />
+            </label>
+          </div>
+          <p className="topic-remap-help">
+            Leave both blank to keep original topics. A blank source prepends the target to every selected topic.
+          </p>
+          {remappedMessages.length > 0 && (
+            <div className="topic-remap-preview" aria-label="Topic remapping preview">
+              {remappedMessages.slice(0, 3).map(({ message, topic }) => (
+                <div key={message.id}>
+                  <span>{message.topic}</span>
+                  <i>→</i>
+                  <strong>{topic || '(empty topic)'}</strong>
+                </div>
+              ))}
+              {remappedMessages.length > 3 && (
+                <small>and {(remappedMessages.length - 3).toLocaleString()} more message(s)</small>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className={`replay-warning ${invalidTopic ? 'invalid' : ''}`}>
+          <strong>
+            {invalidTopic
+              ? `Invalid replay topic “${invalidTopic.topic}”.`
+              : retained > 0
+                ? `${retained} retained message(s) selected.`
+                : 'No retained messages selected.'}
+          </strong>
+          <span>
+            {invalidTopic?.error || `${formatBytes(selectedBytes)} will be published to the currently connected broker.`}
+          </span>
         </div>
 
         {progress.state !== 'idle' && (
@@ -117,7 +189,7 @@ export function ReplayDialog({
             <button
               className="primary-button"
               type="button"
-              disabled={selectedMessages.length === 0}
+              disabled={selectedMessages.length === 0 || Boolean(invalidTopic)}
               onClick={start}
             >
               Start replay

@@ -1,8 +1,15 @@
 import type { MqttMessageRecord, ReplayOptions } from './contracts'
+import { remapTopic } from './mqtt-topic'
 
 export const MAX_REPLAY_MESSAGES = 5_000
 export const MAX_REPLAY_WINDOW_MS = 30_000
 export const MAX_REPLAY_DELAY_MS = 2_000
+
+export interface ReplayPlanItem {
+  message: MqttMessageRecord
+  topic: string
+  remapped: boolean
+}
 
 export function selectReplayMessages(
   messages: MqttMessageRecord[],
@@ -13,6 +20,16 @@ export function selectReplayMessages(
       message.direction === 'incoming' ? options.includeIncoming : options.includeOutgoing
     )
     .slice(0, MAX_REPLAY_MESSAGES)
+}
+
+export function createReplayPlan(
+  messages: MqttMessageRecord[],
+  options: ReplayOptions
+): ReplayPlanItem[] {
+  return selectReplayMessages(messages, options).map((message) => {
+    const topic = remapTopic(message.topic, options.topicRemap)
+    return { message, topic, remapped: topic !== message.topic }
+  })
 }
 
 export function replayTimingScale(messages: MqttMessageRecord[]): number {

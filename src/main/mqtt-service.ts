@@ -9,6 +9,7 @@ import type {
   SubscribeRequest
 } from '../shared/contracts'
 import { createMessageId } from '../shared/message'
+import { publishTopicError } from '../shared/mqtt-topic'
 
 type StatusListener = (event: StatusEvent) => void
 type MessageListener = (message: MqttMessageRecord) => void
@@ -141,7 +142,8 @@ export class MqttService {
   async publish(request: PublishRequest): Promise<void> {
     const client = this.requireConnectedClient()
     const topic = request.topic.trim()
-    if (!topic) throw new Error('Publish topic is required.')
+    const topicError = publishTopicError(topic)
+    if (topicError) throw new Error(topicError)
 
     const payload = request.payloadBase64
       ? Buffer.from(request.payloadBase64, 'base64')
