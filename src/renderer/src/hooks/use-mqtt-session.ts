@@ -111,9 +111,7 @@ function defaultConfig(isDesktop: boolean): ConnectionConfig {
 }
 
 export function useMqttSession() {
-  const controllerRef = useRef<MqttController | null>(null)
-  if (!controllerRef.current) controllerRef.current = new MqttController()
-  const controller = controllerRef.current
+  const [controller] = useState(() => new MqttController())
 
   const [config, setConfig] = useState<ConnectionConfig>(() => defaultConfig(controller.isDesktop))
   const [status, setStatus] = useState<StatusEvent>({ state: 'disconnected' })
