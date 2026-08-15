@@ -1,3 +1,4 @@
+import { Buffer } from 'node:buffer'
 import { createServer, type Server } from 'node:net'
 import type { AddressInfo } from 'node:net'
 import { generate, parser, type Packet } from 'mqtt-packet'
@@ -23,7 +24,7 @@ describe('MqttService MQTT 5 integration', () => {
     server = createServer((socket) => {
       const packetParser = parser(packetOptions)
       const subscriptions = new Set<string>()
-      socket.on('data', (data) => packetParser.parse(data))
+      socket.on('data', (data) => packetParser.parse(typeof data === 'string' ? Buffer.from(data) : data))
       packetParser.on('packet', (packet: Packet) => {
         switch (packet.cmd) {
           case 'connect':
