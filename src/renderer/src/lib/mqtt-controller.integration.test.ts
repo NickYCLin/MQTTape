@@ -47,7 +47,7 @@ describe('MqttController Web Lite integration', () => {
     else Reflect.deleteProperty(globalThis, 'window')
   })
 
-  it('connects, subscribes, publishes, and receives over WebSocket', async () => {
+  it('connects, subscribes, and preserves text and binary payloads over WebSocket', async () => {
     const statuses: StatusEvent[] = []
     const messages: MqttMessageRecord[] = []
     const controller = new MqttController()
@@ -90,6 +90,30 @@ describe('MqttController Web Lite integration', () => {
         direction: 'incoming',
         topic: 'mqttape/websocket',
         payloadText: '{"transport":"websocket"}'
+      })
+    ]))
+
+    const binaryPayload = 'AEH/IH4K'
+    await controller.publish({
+      topic: 'mqttape/websocket',
+      payload: '',
+      payloadBase64: binaryPayload,
+      qos: 1,
+      retain: false
+    })
+    await waitFor(() => messages.some((message) =>
+      message.direction === 'incoming' && message.payloadBase64 === binaryPayload
+    ))
+    expect(messages).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        direction: 'outgoing',
+        payloadBase64: binaryPayload,
+        size: 6
+      }),
+      expect.objectContaining({
+        direction: 'incoming',
+        payloadBase64: binaryPayload,
+        size: 6
       })
     ]))
 

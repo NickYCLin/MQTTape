@@ -32,4 +32,35 @@ describe('capture validation', () => {
       messages: [{ topic: 42 }]
     })).toBe(false)
   })
+
+  it('rejects malformed Base64 and payload sizes that do not match the original bytes', () => {
+    const capture = {
+      format: 'mqttape-capture',
+      version: 1,
+      exportedAt: '2026-01-01T00:00:00.000Z',
+      connection: {},
+      messages: [{
+        id: 'binary',
+        direction: 'incoming',
+        topic: 'demo/binary',
+        timestamp: '2026-01-01T00:00:00.000Z',
+        qos: 0,
+        retain: false,
+        duplicate: false,
+        payloadBase64: 'AEH/IH4K',
+        payloadText: '\u0000A� ~\n',
+        size: 6
+      }]
+    }
+
+    expect(isCaptureFile(capture)).toBe(true)
+    expect(isCaptureFile({
+      ...capture,
+      messages: [{ ...capture.messages[0], payloadBase64: 'not base64!' }]
+    })).toBe(false)
+    expect(isCaptureFile({
+      ...capture,
+      messages: [{ ...capture.messages[0], size: 5 }]
+    })).toBe(false)
+  })
 })

@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { filterMessages, formatBytes, prettyPayload } from './message'
+import {
+  decodePayloadBytes,
+  detectPayloadKind,
+  filterMessages,
+  formatBytes,
+  formatHexDump,
+  isProbablyBinaryText,
+  prettyPayload
+} from './message'
 import type { MqttMessageRecord } from './contracts'
 
 const message: MqttMessageRecord = {
@@ -30,5 +38,23 @@ describe('message utilities', () => {
   it('formats byte counts', () => {
     expect(formatBytes(12)).toBe('12 B')
     expect(formatBytes(1536)).toBe('1.5 KB')
+  })
+
+  it('classifies empty, JSON, text, and binary payloads from their original bytes', () => {
+    expect(detectPayloadKind('')).toBe('empty')
+    expect(detectPayloadKind('eyJvbmxpbmUiOnRydWV9')).toBe('json')
+    expect(detectPayloadKind('5rip6Kmm')).toBe('text')
+    expect(detectPayloadKind('AP8QQQ==')).toBe('binary')
+    expect(isProbablyBinaryText('\u0000data')).toBe(true)
+    expect(isProbablyBinaryText('normal text')).toBe(false)
+  })
+
+  it('decodes bytes and formats an offset, hexadecimal, and ASCII dump', () => {
+    expect([...decodePayloadBytes('AEH/IH4K')]).toEqual([0, 65, 255, 32, 126, 10])
+    expect(formatHexDump('AEH/IH4K', 4)).toBe([
+      '0000  00 41 FF 20  |.A. |',
+      '0004  7E 0A        |~.  |'
+    ].join('\n'))
+    expect(formatHexDump('AEH/IH4K', 4, 4)).toContain('2 additional byte(s) not shown')
   })
 })
