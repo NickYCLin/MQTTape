@@ -1,5 +1,50 @@
-import type { CaptureFile } from './contracts'
-import { decodePayloadBytes } from './message'
+import type { CaptureFile, MqttMessageRecord } from './contracts'
+import { decodePayloadBytes, filterMessages } from './message'
+
+export interface CaptureTrimOptions {
+  includeIncoming: boolean
+  includeOutgoing: boolean
+  query: string
+  fromTimestamp?: string
+  toTimestamp?: string
+}
+
+export interface CaptureTrimPlan {
+  messages: MqttMessageRecord[]
+  error?: string
+}
+
+function captureBoundary(value: string | undefined, label: string): { time?: number; error?: string } {
+  if (!value) return {}
+  const time = Date.parse(value)
+  return Number.isFinite(time)
+    ? { time }
+    : { error: `${label} is not a valid date and time.` }
+}
+
+export function createCaptureTrimPlan(
+  messages: MqttMessageRecord[],
+  options: CaptureTrimOptions
+): CaptureTrimPlan {
+  const from = captureBoundary(options.fromTimestamp, 'Start time')
+  if (from.error) return { messages: [], error: from.error }
+  const to = captureBoundary(options.toTimestamp, 'End time')
+  if (to.error) return { messages: [], error: to.error }
+  if (from.time !== undefined && to.time !== undefined && from.time > to.time) {
+    return { messages: [], error: 'Start time must be before or equal to end time.' }
+  }
+
+  const selected = messages.filter((message) => {
+    if (message.direction === 'incoming' && !options.includeIncoming) return false
+    if (message.direction === 'outgoing' && !options.includeOutgoing) return false
+    const timestamp = Date.parse(message.timestamp)
+    if (from.time !== undefined && timestamp < from.time) return false
+    if (to.time !== undefined && timestamp > to.time) return false
+    return true
+  })
+
+  return { messages: filterMessages(selected, options.query) }
+}
 
 export function isCaptureFile(value: unknown): value is CaptureFile {
   if (!value || typeof value !== 'object') return false

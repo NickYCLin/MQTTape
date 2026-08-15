@@ -1,5 +1,27 @@
 import { describe, expect, it } from 'vitest'
-import { isCaptureFile } from './capture'
+import { createCaptureTrimPlan, isCaptureFile } from './capture'
+import type { MqttMessageRecord } from './contracts'
+
+function message(
+  id: string,
+  direction: MqttMessageRecord['direction'],
+  timestamp: string,
+  topic: string,
+  payloadText: string
+): MqttMessageRecord {
+  return {
+    id,
+    direction,
+    timestamp,
+    topic,
+    qos: 0,
+    retain: false,
+    duplicate: false,
+    payloadBase64: btoa(payloadText),
+    payloadText,
+    size: payloadText.length
+  }
+}
 
 describe('capture validation', () => {
   it('accepts a version 1 MQTTape capture', () => {
@@ -62,5 +84,55 @@ describe('capture validation', () => {
       ...capture,
       messages: [{ ...capture.messages[0], size: 5 }]
     })).toBe(false)
+  })
+
+  it('trims captures by direction and a case-insensitive topic or payload query', () => {
+    const messages = [
+      message('one', 'incoming', '2026-01-01T00:00:00.000Z', 'factory/Line-A', 'running'),
+      message('two', 'outgoing', '2026-01-01T00:00:01.000Z', 'factory/line-b', 'STOPPED'),
+      message('three', 'outgoing', '2026-01-01T00:00:02.000Z', 'office/line-a', 'running')
+    ]
+
+    expect(createCaptureTrimPlan(messages, {
+      includeIncoming: false,
+      includeOutgoing: true,
+      query: 'stopped'
+    }).messages.map(({ id }) => id)).toEqual(['two'])
+  })
+
+  it('keeps messages on inclusive time boundaries while preserving their order', () => {
+    const messages = [
+      message('one', 'incoming', '2026-01-01T00:00:00.000Z', 'demo/one', '1'),
+      message('two', 'incoming', '2026-01-01T00:00:01.000Z', 'demo/two', '2'),
+      message('three', 'incoming', '2026-01-01T00:00:02.000Z', 'demo/three', '3')
+    ]
+    const original = [...messages]
+
+    const plan = createCaptureTrimPlan(messages, {
+      includeIncoming: true,
+      includeOutgoing: true,
+      query: '',
+      fromTimestamp: '2026-01-01T00:00:01.000Z',
+      toTimestamp: '2026-01-01T00:00:02.000Z'
+    })
+
+    expect(plan.messages.map(({ id }) => id)).toEqual(['two', 'three'])
+    expect(messages).toEqual(original)
+    expect(plan.messages).not.toBe(messages)
+  })
+
+  it('rejects invalid or reversed capture time ranges', () => {
+    const messages = [message('one', 'incoming', '2026-01-01T00:00:00.000Z', 'demo', '1')]
+    const options = { includeIncoming: true, includeOutgoing: true, query: '' }
+
+    expect(createCaptureTrimPlan(messages, {
+      ...options,
+      fromTimestamp: 'not-a-date'
+    })).toEqual({ messages: [], error: 'Start time is not a valid date and time.' })
+    expect(createCaptureTrimPlan(messages, {
+      ...options,
+      fromTimestamp: '2026-01-02T00:00:00.000Z',
+      toTimestamp: '2026-01-01T00:00:00.000Z'
+    })).toEqual({ messages: [], error: 'Start time must be before or equal to end time.' })
   })
 })
