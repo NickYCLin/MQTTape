@@ -5,8 +5,13 @@ updates:
     schedule:
       interval: weekly
     groups:
-      development-dependencies:
+      # Keep breaking major upgrades isolated so peer compatibility can be
+      # reviewed independently instead of blocking every dev dependency update.
+      development-minor-patch:
         dependency-type: development
+        update-types:
+          - minor
+          - patch
   - package-ecosystem: github-actions
     directory: /
     schedule:
