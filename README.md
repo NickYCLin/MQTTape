@@ -19,7 +19,8 @@ message timeline and portable capture files.
 - Automatic Text, formatted JSON, and offset/ASCII Hex payload inspection
 - Binary payload detection plus lossless raw-payload downloads
 - Session statistics and binary-safe Base64 capture storage
-- Export sanitized MQTTape capture files without passwords
+- Trim captures by direction, topic or payload, and time range before export
+- Export sanitized MQTTape capture files without passwords or local TLS paths
 - Preview captures before replay, select message directions, and control speed
 - Safely remap a complete topic prefix with a before/after preview
 - Pause, resume, or cancel a replay while preserving recorded ordering
@@ -159,7 +160,7 @@ Please report vulnerabilities according to [SECURITY.md](SECURITY.md).
 
 ## Roadmap
 
-- Reusable replay presets and capture trimming
+- Reusable replay presets
 - CBOR, Protobuf, and Sparkplug B payload viewers
 - MQTT 5 properties and QoS packet-flow inspection
 - Multiple simultaneous broker sessions

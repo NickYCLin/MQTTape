@@ -2,6 +2,13 @@
 
 All notable changes to MQTTape are documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- Capture trimming by message direction, topic or payload query, and inclusive time range.
+- Export previews with selected message counts, payload size, retained counts, and sample topics.
+
 ## [0.4.0] - 2026-08-15
 
 ### Added
@@ -66,6 +73,7 @@ All notable changes to MQTTape are documented in this file.
 - Cross-platform packaging, CI, and automated GitHub Releases.
 
 [0.4.0]: https://github.com/NickYCLin/MQTTape/compare/v0.3.0...v0.4.0
+[Unreleased]: https://github.com/NickYCLin/MQTTape/compare/v0.4.0...HEAD
 [0.3.0]: https://github.com/NickYCLin/MQTTape/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/NickYCLin/MQTTape/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/NickYCLin/MQTTape/releases/tag/v0.1.0

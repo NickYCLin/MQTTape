@@ -10,6 +10,7 @@ import {
   UploadIcon,
   XIcon
 } from './components/icons'
+import { CaptureExportDialog } from './components/CaptureExportDialog'
 import { MessageTimeline } from './components/MessageTimeline'
 import { PublishComposer } from './components/PublishComposer'
 import { ReplayDialog } from './components/ReplayDialog'
@@ -33,6 +34,7 @@ export default function App() {
   const session = useMqttSession()
   const [query, setQuery] = useState('')
   const [activeView, setActiveView] = useState<'timeline' | 'topics'>('timeline')
+  const [captureToExport, setCaptureToExport] = useState<CaptureFile | null>(null)
   const [replayCapture, setReplayCapture] = useState<CaptureFile | null>(null)
   const captureInputRef = useRef<HTMLInputElement>(null)
   const connected = session.status.state === 'connected'
@@ -42,20 +44,22 @@ export default function App() {
     [query, session.messages]
   )
 
-  const exportCapture = async (): Promise<void> => {
-    const capture = session.makeCapture()
-    if (window.mqttape) {
-      await window.mqttape.saveCapture(capture)
-      return
-    }
+  const saveCapture = async (capture: CaptureFile): Promise<boolean> => {
+    try {
+      if (window.mqttape) return window.mqttape.saveCapture(capture)
 
-    const blob = new Blob([JSON.stringify(capture, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const anchor = document.createElement('a')
-    anchor.href = url
-    anchor.download = `mqttape-${new Date().toISOString().replace(/[:.]/g, '-')}.json`
-    anchor.click()
-    URL.revokeObjectURL(url)
+      const blob = new Blob([JSON.stringify(capture, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.download = `mqttape-${new Date().toISOString().replace(/[:.]/g, '-')}.json`
+      anchor.click()
+      window.setTimeout(() => URL.revokeObjectURL(url), 0)
+      return true
+    } catch (reason) {
+      session.reportError(reason instanceof Error ? reason.message : String(reason))
+      return false
+    }
   }
 
   const importAndReplay = async (event: ChangeEvent<HTMLInputElement>): Promise<void> => {
@@ -226,7 +230,7 @@ export default function App() {
                   className="secondary-button"
                   type="button"
                   disabled={session.messages.length === 0 || session.busy}
-                  onClick={exportCapture}
+                  onClick={() => setCaptureToExport(session.makeCapture())}
                 >
                   <DownloadIcon />
                   Export
@@ -269,6 +273,14 @@ export default function App() {
             <XIcon />
           </button>
         </div>
+      )}
+
+      {captureToExport && (
+        <CaptureExportDialog
+          capture={captureToExport}
+          onExport={saveCapture}
+          onClose={() => setCaptureToExport(null)}
+        />
       )}
 
       {replayCapture && (
