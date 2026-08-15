@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import type { MqttMessageRecord } from '../../../shared/contracts'
-import { formatBytes, prettyPayload } from '../../../shared/message'
+import { formatBytes, isProbablyBinaryText } from '../../../shared/message'
 import { ChevronIcon } from './icons'
+import { PayloadInspector } from './PayloadInspector'
 
 interface MessageTimelineProps {
   messages: MqttMessageRecord[]
@@ -56,7 +57,9 @@ export function MessageTimeline({ messages }: MessageTimelineProps) {
               <span className="direction-marker">{message.direction === 'incoming' ? 'IN' : 'OUT'}</span>
               <time>{formatTime(message.timestamp)}</time>
               <span className="message-topic" title={message.topic}>{message.topic}</span>
-              <span className="payload-preview">{message.payloadText || '∅'}</span>
+              <span className="payload-preview">
+                {isProbablyBinaryText(message.payloadText) ? '<binary payload>' : message.payloadText || '∅'}
+              </span>
               <span className="message-meta">Q{message.qos}</span>
               {message.retain && <span className="message-meta retained">R</span>}
               <span className="message-size">{formatBytes(message.size)}</span>
@@ -70,7 +73,7 @@ export function MessageTimeline({ messages }: MessageTimelineProps) {
                   <span>Retained <strong>{message.retain ? 'yes' : 'no'}</strong></span>
                   <span>Duplicate <strong>{message.duplicate ? 'yes' : 'no'}</strong></span>
                 </div>
-                <pre>{prettyPayload(message.payloadText) || '(empty payload)'}</pre>
+                <PayloadInspector message={message} />
               </div>
             )}
           </article>

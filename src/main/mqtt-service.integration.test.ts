@@ -93,6 +93,30 @@ describe('MqttService integration', () => {
       })
     ]))
 
+    const binaryPayload = 'AEH/IH4K'
+    await service.publish({
+      topic: 'mqttape/integration',
+      payload: '',
+      payloadBase64: binaryPayload,
+      qos: 1,
+      retain: false
+    })
+    await waitFor(() => messages.some((message) =>
+      message.direction === 'incoming' && message.payloadBase64 === binaryPayload
+    ))
+    expect(messages).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        direction: 'outgoing',
+        payloadBase64: binaryPayload,
+        size: 6
+      }),
+      expect.objectContaining({
+        direction: 'incoming',
+        payloadBase64: binaryPayload,
+        size: 6
+      })
+    ]))
+
     await service.disconnect()
   })
 

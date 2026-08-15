@@ -433,6 +433,19 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 .detail-meta { flex-wrap: wrap; gap: 13px; padding: 8px 11px; color: var(--faint); border-bottom: 1px solid var(--line-soft); font-size: 9px; }
 .detail-meta strong { color: #b9c5d2; font: 500 9px ui-monospace, 'Cascadia Mono', monospace; }
 .message-detail pre { max-height: 260px; margin: 0; padding: 12px; overflow: auto; color: #c9d4df; font: 10px/1.65 ui-monospace, 'Cascadia Mono', monospace; white-space: pre-wrap; word-break: break-word; }
+.payload-inspector-toolbar { min-height: 38px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 9px; border-bottom: 1px solid var(--line-soft); background: rgba(255, 255, 255, 0.012); }
+.payload-view-tabs { display: flex; align-items: center; gap: 3px; padding: 2px; border: 1px solid var(--line-soft); border-radius: 7px; background: #080e14; }
+.payload-view-tabs button { height: 24px; padding: 0 9px; color: var(--faint); border-radius: 5px; background: transparent; font: 650 8px ui-monospace, 'Cascadia Mono', monospace; text-transform: uppercase; }
+.payload-view-tabs button:hover:not(:disabled):not(.active) { color: var(--muted); }
+.payload-view-tabs button.active { color: #16120b; background: var(--accent); }
+.payload-inspector-actions { display: flex; align-items: center; gap: 7px; }
+.payload-kind { padding: 3px 6px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; font: 700 7px ui-monospace, 'Cascadia Mono', monospace; text-transform: uppercase; }
+.payload-kind.json { color: var(--green); border-color: rgba(88, 214, 155, 0.3); }
+.payload-kind.binary { color: var(--accent); border-color: rgba(240, 179, 93, 0.32); }
+.payload-inspector-actions button { height: 26px; display: flex; align-items: center; gap: 5px; padding: 0 8px; color: var(--muted); border: 1px solid var(--line); border-radius: 6px; background: var(--surface-2); font-size: 8px; font-weight: 650; }
+.payload-inspector-actions button:hover { color: var(--text); border-color: #435365; }
+.payload-inspector-note { margin: 0; padding: 7px 11px; color: #d9ad70; border-bottom: 1px solid rgba(240, 179, 93, 0.16); background: rgba(240, 179, 93, 0.045); font-size: 8px; line-height: 1.5; }
+.message-detail pre.hex-dump { white-space: pre; word-break: normal; }
 
 .topic-explorer { height: 100%; min-height: 0; display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(270px, 0.75fr); }
 .topic-tree-pane,

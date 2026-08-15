@@ -2,6 +2,24 @@
 
 All notable changes to MQTTape are documented in this file.
 
+## [0.4.0] - 2026-08-15
+
+### Added
+
+- Automatic empty, JSON, text, and binary payload classification.
+- Text, formatted JSON, and offset/ASCII Hex views in the message timeline.
+- Lossless raw-payload downloads with topic- and timestamp-derived filenames.
+- 256 KB display limits for large payloads while preserving complete downloads.
+- TCP and WebSocket integration coverage for binary payload byte preservation.
+- Weekly Dependabot updates for GitHub Actions.
+
+### Changed
+
+- Binary timeline previews now use a clear placeholder instead of decoded noise.
+- Capture validation rejects malformed Base64 and mismatched payload byte sizes.
+- GitHub workflows now use Node 24-based action majors for CI, Pages, and releases.
+- Release notes no longer contain version-specific text from an older release.
+
 ## [0.3.0] - 2026-08-14
 
 ### Added
@@ -47,6 +65,7 @@ All notable changes to MQTTape are documented in this file.
 - Searchable message timeline, JSON formatting, capture export, and replay.
 - Cross-platform packaging, CI, and automated GitHub Releases.
 
+[0.4.0]: https://github.com/NickYCLin/MQTTape/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/NickYCLin/MQTTape/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/NickYCLin/MQTTape/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/NickYCLin/MQTTape/releases/tag/v0.1.0

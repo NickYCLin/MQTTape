@@ -25,9 +25,9 @@ jobs:
     runs-on: ${{ matrix.runner }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -38,7 +38,7 @@ jobs:
       - name: Package ${{ matrix.target }}
         run: npx electron-builder ${{ matrix.args }} --publish never
       - name: Upload packages
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: MQTTape-${{ matrix.target }}
           path: |
@@ -57,7 +57,7 @@ jobs:
       contents: write
     steps:
       - name: Download packages
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: artifacts
           merge-multiple: true
@@ -68,8 +68,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_NOTES: |
-            MQTTape v0.2 adds safer replay controls, encrypted broker profiles,
-            desktop mTLS file selection, and a deployable Web Lite client.
+            MQTTape releases include the latest inspected source, cross-platform
+            desktop packages, and a SHA-256 checksum manifest.
 
             Windows and macOS packages are unsigned. Review the repository and
             checksum file before bypassing SmartScreen or Gatekeeper warnings.

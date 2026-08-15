@@ -1,4 +1,5 @@
 import type { CaptureFile } from './contracts'
+import { decodePayloadBytes } from './message'
 
 export function isCaptureFile(value: unknown): value is CaptureFile {
   if (!value || typeof value !== 'object') return false
@@ -8,7 +9,7 @@ export function isCaptureFile(value: unknown): value is CaptureFile {
 
   return candidate.messages.every((message) => {
     const timestamp = Date.parse(message?.timestamp ?? '')
-    return Boolean(
+    const validShape = Boolean(
       message &&
       typeof message.id === 'string' &&
       (message.direction === 'incoming' || message.direction === 'outgoing') &&
@@ -23,5 +24,12 @@ export function isCaptureFile(value: unknown): value is CaptureFile {
       typeof message.size === 'number' &&
       message.size >= 0
     )
+    if (!validShape) return false
+
+    try {
+      return decodePayloadBytes(message.payloadBase64).byteLength === message.size
+    } catch {
+      return false
+    }
   })
 }
