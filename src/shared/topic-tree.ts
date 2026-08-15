@@ -62,12 +62,11 @@ export function buildTopicTree(messages: MqttMessageRecord[]): TopicTreeResult {
 
   for (const message of orderedMessages(messages)) {
     let siblings = roots
-    let topic = ''
     let leaf: MutableTopicNode | undefined
 
     const segments = message.topic.split('/')
     for (const [index, segment] of segments.entries()) {
-      topic = segments.slice(0, index + 1).join('/')
+      const topic = segments.slice(0, index + 1).join('/')
       let node = siblings.get(segment)
       if (!node) {
         node = {
