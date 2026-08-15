@@ -1,11 +1,19 @@
 import { resolve } from 'node:path'
-import { defineConfig } from 'vite'
+import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
+import { allowViteDevelopmentStyles } from './src/build/web-development-csp'
+
+const developmentCspPlugin: Plugin = {
+  name: 'mqttape-web-development-csp',
+  apply: 'serve',
+  enforce: 'pre',
+  transformIndexHtml: allowViteDevelopmentStyles
+}
 
 export default defineConfig({
   root: 'src/renderer',
   base: './',
-  plugins: [react()],
+  plugins: [developmentCspPlugin, react()],
   resolve: {
     alias: {
       '@renderer': resolve('src/renderer/src'),
