@@ -9,6 +9,10 @@ All notable changes to MQTTape are documented in this file.
 - Capture trimming by message direction, topic or payload query, and inclusive time range.
 - Export previews with selected message counts, payload size, retained counts, and sample topics.
 
+### Fixed
+
+- Web Lite development mode now loads Vite-injected styles without weakening production CSP.
+
 ## [0.4.0] - 2026-08-15
 
 ### Added
