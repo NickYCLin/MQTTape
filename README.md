@@ -16,7 +16,9 @@ message timeline and portable capture files.
 - Searchable inbound/outbound message timeline
 - Session-derived topic tree with hierarchy, traffic counts, and latest payloads
 - Retained-value snapshot that recognizes empty retained-message tombstones
-- JSON payload formatting and session statistics
+- Automatic Text, formatted JSON, and offset/ASCII Hex payload inspection
+- Binary payload detection plus lossless raw-payload downloads
+- Session statistics and binary-safe Base64 capture storage
 - Export sanitized MQTTape capture files without passwords
 - Preview captures before replay, select message directions, and control speed
 - Safely remap a complete topic prefix with a before/after preview
@@ -131,6 +133,19 @@ broker inventory: MQTT has no standard command for enumerating every topic on a
 broker. MQTTape adds retained values it observes or publishes and removes them
 when it sees an empty retained publish (the MQTT retained-message tombstone).
 
+## Payload Inspector
+
+Expand any timeline message to inspect the original payload bytes. MQTTape opens
+valid JSON in a formatted JSON view, printable UTF-8 as text, and binary data as
+an offset/ASCII Hex dump. Text, JSON, and Hex remain available as applicable so
+the same payload can be compared without leaving the timeline.
+
+The **Raw** action downloads the exact bytes stored in `payloadBase64`; it does
+not re-encode the decoded text. Large on-screen previews are limited to the first
+256 KB to keep the UI responsive, while the raw download retains the complete
+payload. Imported captures are rejected when Base64 is malformed or its decoded
+length does not match the recorded byte size.
+
 ## Security
 
 - Electron renderer processes have no Node.js integration.
@@ -145,7 +160,7 @@ Please report vulnerabilities according to [SECURITY.md](SECURITY.md).
 ## Roadmap
 
 - Reusable replay presets and capture trimming
-- Hex, CBOR, Protobuf, and Sparkplug B payload viewers
+- CBOR, Protobuf, and Sparkplug B payload viewers
 - MQTT 5 properties and QoS packet-flow inspection
 - Multiple simultaneous broker sessions
 - Last Will, custom WebSocket headers, and advanced authentication
