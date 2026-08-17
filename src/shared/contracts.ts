@@ -90,6 +90,12 @@ export interface ReplayOptions {
   topicRemap?: ReplayTopicRemap
 }
 
+export interface ReplayPreset {
+  id: string
+  name: string
+  options: ReplayOptions
+}
+
 export interface ReplayTopicRemap {
   fromPrefix: string
   toPrefix: string

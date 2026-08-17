@@ -22,6 +22,7 @@ message timeline and portable capture files.
 - Trim captures by direction, topic or payload, and time range before export
 - Export sanitized MQTTape capture files without passwords or local TLS paths
 - Preview captures before replay, select message directions, and control speed
+- Save reusable local replay presets for directions, speed, and topic remapping
 - Safely remap a complete topic prefix with a before/after preview
 - Pause, resume, or cancel a replay while preserving recorded ordering
 - Saved broker profiles with encrypted desktop secrets
@@ -160,7 +161,6 @@ Please report vulnerabilities according to [SECURITY.md](SECURITY.md).
 
 ## Roadmap
 
-- Reusable replay presets
 - CBOR, Protobuf, and Sparkplug B payload viewers
 - MQTT 5 properties and QoS packet-flow inspection
 - Multiple simultaneous broker sessions
