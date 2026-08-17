@@ -1176,6 +1176,66 @@ input[type='checkbox'] {
   white-space: nowrap;
 }
 
+.structured-payload { display: grid; gap: 10px; padding: 12px; background: var(--surface-2); }
+.structured-payload-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.structured-payload-head > div:first-child { min-width: 0; display: grid; gap: 3px; }
+.structured-payload-head h3 { font-size: 15px; }
+.structured-payload-head p { max-width: 760px; color: var(--text-2); font-size: 11.5px; line-height: 1.55; }
+.structured-payload-tags { flex: none; display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.structured-payload-error {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  color: var(--danger);
+  border: 1px solid color-mix(in srgb, var(--danger) 34%, transparent);
+  border-radius: var(--radius);
+  background: var(--danger-soft);
+}
+.structured-payload-error strong { font-size: 12.5px; }
+.structured-payload-error code { overflow-wrap: anywhere; color: var(--text-2); font-size: 11px; }
+
+.payload-tree-scroll {
+  max-height: 360px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.payload-tree,
+.payload-tree ul { margin: 0; padding: 0; list-style: none; }
+.payload-tree ul { margin-left: 17px; border-left: 1px solid var(--border); }
+.payload-tree-item,
+.payload-tree-branch summary {
+  min-height: 31px;
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+}
+.payload-tree-branch summary { cursor: pointer; }
+.payload-tree-branch summary:hover { background: var(--accent-soft); }
+.payload-tree-branch summary::marker { color: var(--accent); }
+.payload-tree-key { color: var(--accent); font-size: 11.5px; font-weight: 650; }
+.payload-tree-separator { color: var(--text-3); }
+.payload-tree-value { max-width: min(680px, 60vw); overflow: hidden; color: var(--text); text-overflow: ellipsis; white-space: pre; }
+.payload-tree-item small,
+.payload-tree-summary { color: var(--text-3); font-size: 10.5px; }
+.payload-tree-item.kind-string .payload-tree-value { color: var(--in); }
+.payload-tree-item.kind-number .payload-tree-value,
+.payload-tree-item.kind-bigint .payload-tree-value { color: var(--out); }
+.payload-tree-item.kind-boolean .payload-tree-value { color: var(--warning); }
+.payload-tree-item.kind-null .payload-tree-value,
+.payload-tree-item.kind-undefined .payload-tree-value,
+.payload-tree-item.kind-reference .payload-tree-value { color: var(--text-3); }
+
 /* ===== LoRaWAN inspector =============================================== */
 
 .lorawan { display: grid; gap: 12px; padding: 12px; }
@@ -1988,6 +2048,8 @@ input[type='checkbox'] {
   .packet-flow-legend > span:last-child { margin-left: 0; }
   .packet-flow-card-head { grid-template-columns: auto minmax(0, 1fr); }
   .packet-flow-result { grid-column: 1 / -1; grid-row: 2; justify-items: start; }
+  .structured-payload-head { flex-direction: column; }
+  .structured-payload-tags { justify-content: flex-start; }
   .downlink-track-head,
   .downlink-event-line { align-items: flex-start; flex-direction: column; }
   .downlink-track-meta { grid-template-columns: repeat(2, minmax(0, 1fr)); }

@@ -18,6 +18,7 @@ MQTTape 是一套可在桌面與瀏覽器使用的開源 MQTT 除錯工具。它
 - 依工作階段建立 Topic 階層、流量統計及最新 Payload
 - Retained Value 快照，並能辨識空白 Retained Message Tombstone
 - 自動以文字、格式化 JSON、Hex Offset／ASCII 檢視 Payload
+- 自動辨識或依 MQTT 5 Content Type 解碼 CBOR，並以保留資料型別的樹狀結構檢視
 - 偵測二進位 Payload，並可無損下載原始資料
 - 自動辨識 The Things Stack 與 ChirpStack LoRaWAN Uplink
 - 顯示 LoRaWAN 裝置、訊框、頻率、Data Rate、RSSI 與 SNR 摘要
@@ -190,6 +191,12 @@ Retained 面板是刻意設計成「依工作階段產生的快照」，不是 B
 
 「Raw」會下載 `payloadBase64` 中儲存的原始位元組，不會重新編碼已解碼文字。為維持介面流暢，大型 Payload 的畫面預覽最多顯示前 256 KB，但原始下載仍保留完整資料。若匯入擷取檔的 Base64 格式錯誤，或解碼後長度與記錄的 Byte Size 不符，MQTTape 會拒絕匯入。
 
+### CBOR Viewer
+
+當 MQTT 5 Content Type 是 `application/cbor`、`application/cbor-seq` 或 `+cbor` 結尾的媒體類型時，Payload Inspector 會明確啟用 CBOR 頁籤；沒有 Content Type 時，只會自動辨識具有 Map、Array 等明顯結構的 CBOR，避免把一般二進位資料誤判為 CBOR。解碼遵循 RFC 8949，並在樹狀檢視中保留 Map、Set、Tag、Byte String、Date 與 BigInt 等型別。
+
+結構化預覽最多處理前 256 KB、5,000 個節點、32 層深度及每個集合 200 個子項目。超過限制或解碼失敗時，原本的 Hex 與 Raw 仍可使用，原始 Payload 不會被修改。
+
 ## 安全性
 
 - Electron Renderer 不啟用 Node.js Integration
@@ -203,7 +210,7 @@ Retained 面板是刻意設計成「依工作階段產生的快照」，不是 B
 
 ## Roadmap
 
-- CBOR、Protobuf 與 Sparkplug B Payload Viewer
+- Protobuf 與 Sparkplug B Payload Viewer
 - 同時連線多個 Broker 工作階段
 - Last Will、自訂 WebSocket Header 與進階認證
 - 已簽章安裝程式與更多 CPU 架構
