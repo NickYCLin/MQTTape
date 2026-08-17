@@ -1,12 +1,15 @@
 """Render the MQTTape application icon.
 
-The mark is drawn on a 64-unit grid so it matches TapeIcon in the renderer:
-a cassette shell holding a part-wound and a full reel, joined by the tape
-between them, stroked in near-black over the brand accent gradient.
+The mark is a cassette drawn on a 64-unit grid: a light shell with a paper
+label above and the reel window below, holding a part-wound and a full reel
+joined by the exposed tape.
 
-The reels are deliberately different sizes and joined by the tape band. Two
-equal circles side by side inside a rounded box read as a face no matter how
-they are drawn, and the asymmetry plus the connecting band is what stops it.
+Two things keep it readable. The reels are deliberately different sizes and
+joined by the tape band, because two equal circles side by side inside a
+rounded box read as a face however they are drawn. And the large sizes are
+tilted, which both removes any remaining upright-face reading and gives the
+icon some life; below 48 px the tilt only costs legibility, so those frames
+use the upright shell instead.
 
 Everything is rendered at a multiple of the output size and downscaled,
 because ImageDraw does not anti-alias its own primitives.
@@ -14,7 +17,7 @@ because ImageDraw does not anti-alias its own primitives.
 
 from pathlib import Path
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFilter
 
 ROOT = Path(__file__).resolve().parents[1]
 BUILD = ROOT / "build"
@@ -27,33 +30,50 @@ CANVAS = OUTPUT * SUPERSAMPLE
 UNIT = CANVAS / GRID
 
 ICO_SIZES = [16, 24, 32, 48, 64, 128, 256]
+TILT_FROM = 48  # frames at least this wide use the tilted shell
 
 GRADIENT_START = (160, 148, 255)  # --accent-hover
 GRADIENT_END = (109, 94, 252)  # --accent, one step deeper
-GLYPH = (23, 16, 46, 255)  # --accent-on
+SHELL = (233, 230, 247, 255)
+LABEL = (255, 255, 255, 255)
+RULE = (198, 192, 224, 255)
+WINDOW = (23, 16, 46, 255)  # --accent-on
 
-CORNER_RADIUS = 14
+PLATE_RADIUS = 14
+TILT = -10
 
-SHELL = (10, 17, 54, 47)
-SHELL_RADIUS = 7
-SHELL_STROKE = 4
+SHELL_BOX = (9.5, 18, 54.5, 46)
+SHELL_RADIUS = 3.2
+LABEL_BOX = (13, 21.5, 51, 30)
+WINDOW_BOX = (13, 32, 51, 44)
 
-REEL_Y = 32
-SUPPLY_REEL = (21, 5)  # centre x, radius — part wound
-TAKEUP_REEL = (41, 7.5)
-REEL_STROKE = 3
-HUB_RADIUS = 1.5
+SUPPLY_REEL = (23.5, 3.3)  # centre x, radius — part wound
+TAKEUP_REEL = (40.7, 4.6)
+HUB_SCALE = 0.32
+TAPE_HEIGHT = 1.9
 
-TAPE = (27, 32.5)  # the exposed span between the two reels
-TAPE_STROKE = 2.8
+SHADOW_BLUR = 1.5
+SHADOW_DROP = 1.3
+SHADOW_ALPHA = 88
 
 
 def unit(value: float) -> float:
     return value * UNIT
 
 
-def stroke(value: float) -> int:
+def line_width(value: float) -> int:
     return max(1, round(unit(value)))
+
+
+def circle(draw: ImageDraw.ImageDraw, x: float, y: float, radius: float, **kwargs) -> None:
+    draw.ellipse(
+        (unit(x - radius), unit(y - radius), unit(x + radius), unit(y + radius)),
+        **kwargs,
+    )
+
+
+def rounded(draw: ImageDraw.ImageDraw, box, radius: float, **kwargs) -> None:
+    draw.rounded_rectangle(tuple(unit(value) for value in box), radius=unit(radius), **kwargs)
 
 
 def gradient_field(samples: int = 256) -> Image.Image:
@@ -73,77 +93,108 @@ def gradient_field(samples: int = 256) -> Image.Image:
     return field.resize((CANVAS, CANVAS), Image.Resampling.BICUBIC)
 
 
-def rounded_square() -> Image.Image:
+def plate() -> Image.Image:
     mask = Image.new("L", (CANVAS, CANVAS), 0)
     ImageDraw.Draw(mask).rounded_rectangle(
         (0, 0, CANVAS - 1, CANVAS - 1),
-        radius=unit(CORNER_RADIUS),
+        radius=unit(PLATE_RADIUS),
         fill=255,
     )
 
-    plate = Image.new("RGBA", (CANVAS, CANVAS), (0, 0, 0, 0))
-    plate.paste(gradient_field(), (0, 0), mask)
-    return plate
+    surface = Image.new("RGBA", (CANVAS, CANVAS), (0, 0, 0, 0))
+    surface.paste(gradient_field(), (0, 0), mask)
+    return surface
 
 
-def circle(draw: ImageDraw.ImageDraw, x: float, y: float, radius: float, **kwargs) -> None:
-    draw.ellipse(
-        (unit(x - radius), unit(y - radius), unit(x + radius), unit(y + radius)),
-        **kwargs,
+def spin(image: Image.Image, angle: float) -> Image.Image:
+    if not angle:
+        return image
+    return image.rotate(
+        angle,
+        resample=Image.Resampling.BICUBIC,
+        center=(CANVAS / 2, CANVAS / 2),
     )
 
 
-def cassette(compact: bool) -> Image.Image:
-    """The cassette mark. The compact variant thickens the strokes and drops
-    the reel hubs, which turn to mush below 32 px."""
+def shell(labelled: bool) -> Image.Image:
+    """The cassette itself. Without the label the shell closes up around a
+    single window, which survives small frames better."""
     layer = Image.new("RGBA", (CANVAS, CANVAS), (0, 0, 0, 0))
     draw = ImageDraw.Draw(layer)
 
-    draw.rounded_rectangle(
-        tuple(unit(value) for value in SHELL),
-        radius=unit(SHELL_RADIUS),
-        outline=GLYPH,
-        width=stroke(SHELL_STROKE + (1 if compact else 0)),
-    )
+    rounded(draw, SHELL_BOX, SHELL_RADIUS, fill=SHELL)
 
-    for centre, radius in (SUPPLY_REEL, TAKEUP_REEL):
-        circle(
-            draw,
-            centre,
-            REEL_Y,
-            radius,
-            outline=GLYPH,
-            width=stroke(REEL_STROKE + (0.8 if compact else 0)),
-        )
-        if not compact:
-            circle(draw, centre, REEL_Y, HUB_RADIUS, fill=GLYPH)
+    if labelled:
+        rounded(draw, LABEL_BOX, 1.6, fill=LABEL)
+        left, top, right, bottom = LABEL_BOX
+        for position in (0.36, 0.64):
+            y = top + (bottom - top) * position
+            draw.line(
+                [(unit(left + 2.4), unit(y)), (unit(right - 8), unit(y))],
+                fill=RULE,
+                width=line_width(0.85),
+            )
+        window = WINDOW_BOX
+    else:
+        window = (WINDOW_BOX[0], LABEL_BOX[1], WINDOW_BOX[2], WINDOW_BOX[3])
 
-    tape_stroke = TAPE_STROKE + (0.6 if compact else 0)
-    draw.line(
-        [(unit(TAPE[0]), unit(REEL_Y)), (unit(TAPE[1]), unit(REEL_Y))],
-        fill=GLYPH,
-        width=stroke(tape_stroke),
+    rounded(draw, window, 2, fill=WINDOW)
+
+    centre_y = (window[1] + window[3]) / 2
+    (supply_x, supply_r), (takeup_x, takeup_r) = SUPPLY_REEL, TAKEUP_REEL
+    if not labelled:
+        supply_r += 0.9
+        takeup_r += 1.1
+
+    draw.rectangle(
+        (
+            unit(supply_x),
+            unit(centre_y - TAPE_HEIGHT / 2),
+            unit(takeup_x),
+            unit(centre_y + TAPE_HEIGHT / 2),
+        ),
+        fill=SHELL,
     )
+    for x, radius in ((supply_x, supply_r), (takeup_x, takeup_r)):
+        circle(draw, x, centre_y, radius, fill=SHELL)
+        circle(draw, x, centre_y, radius * HUB_SCALE, fill=WINDOW)
 
     return layer
 
 
-def render(compact: bool = False) -> Image.Image:
-    icon = Image.alpha_composite(rounded_square(), cassette(compact))
+def shadow(angle: float) -> Image.Image:
+    layer = Image.new("RGBA", (CANVAS, CANVAS), (0, 0, 0, 0))
+    rounded(ImageDraw.Draw(layer), SHELL_BOX, SHELL_RADIUS, fill=(0, 0, 0, 255))
+    layer = layer.filter(ImageFilter.GaussianBlur(unit(SHADOW_BLUR)))
+    layer.putalpha(layer.getchannel("A").point(lambda value: value * SHADOW_ALPHA // 255))
+    layer = spin(layer, angle)
+    return layer.transform(
+        layer.size,
+        Image.AFFINE,
+        (1, 0, 0, 0, 1, -unit(SHADOW_DROP)),
+        resample=Image.Resampling.BICUBIC,
+    )
+
+
+def render(tilted: bool) -> Image.Image:
+    angle = TILT if tilted else 0
+    icon = Image.alpha_composite(plate(), shadow(angle))
+    icon = Image.alpha_composite(icon, spin(shell(labelled=tilted), angle))
     return icon.resize((OUTPUT, OUTPUT), Image.Resampling.LANCZOS)
 
 
 def main() -> None:
-    full = render()
-    compact = render(compact=True)
+    tilted = render(tilted=True)
+    upright = render(tilted=False)
 
-    full.save(BUILD / "icon.png", optimize=True)
+    tilted.save(BUILD / "icon.png", optimize=True)
 
-    # ICO frames below 32 px use the compact mark; the rest keep every detail.
     # Pillow skips any requested size larger than the base image, so the
     # largest frame has to lead and the rest ride along as append_images.
     frames = [
-        (compact if size < 32 else full).resize((size, size), Image.Resampling.LANCZOS)
+        (tilted if size >= TILT_FROM else upright).resize(
+            (size, size), Image.Resampling.LANCZOS
+        )
         for size in sorted(ICO_SIZES, reverse=True)
     ]
     frames[0].save(
