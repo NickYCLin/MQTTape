@@ -6,7 +6,8 @@ All notable changes to MQTTape are documented in this file.
 
 ### Added
 
-- Light, dark, and follow-system appearance themes with a persisted top-bar switch.
+- Six appearance themes — Midnight, Tape, Magenta, High contrast, Daylight, and Paper — plus a follow-system option.
+- Top-bar theme picker with colour swatches, grouped by colour scheme, persisted per device.
 
 ### Changed
 

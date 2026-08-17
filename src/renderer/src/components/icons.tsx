@@ -149,6 +149,25 @@ export function GithubIcon(props: IconProps) {
   )
 }
 
+export function PaletteIcon(props: IconProps) {
+  return (
+    <svg {...baseProps} {...props}>
+      <path d="M12 3a9 9 0 0 0 0 18 2.4 2.4 0 0 0 1.8-4 2.4 2.4 0 0 1 1.8-4H18a3 3 0 0 0 3-3 9 9 0 0 0-9-7Z" />
+      <circle cx="7.5" cy="11.5" r="1.1" fill="currentColor" stroke="none" />
+      <circle cx="10.5" cy="7.5" r="1.1" fill="currentColor" stroke="none" />
+      <circle cx="15.5" cy="8.5" r="1.1" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}
+
+export function CheckIcon(props: IconProps) {
+  return (
+    <svg {...baseProps} {...props}>
+      <path d="m5 12.5 4.5 4.5L19 7" />
+    </svg>
+  )
+}
+
 export function SlidersIcon(props: IconProps) {
   return (
     <svg {...baseProps} {...props}>

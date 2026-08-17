@@ -10,8 +10,10 @@ import {
 import {
   readThemePreference,
   resolveTheme,
+  themeScheme,
   writeThemePreference,
-  type ResolvedTheme,
+  type ColorScheme,
+  type ThemeId,
   type ThemePreference
 } from './lib/theme'
 
@@ -19,7 +21,8 @@ const DARK_QUERY = '(prefers-color-scheme: dark)'
 
 interface ThemeContextValue {
   preference: ThemePreference
-  theme: ResolvedTheme
+  theme: ThemeId
+  scheme: ColorScheme
   setPreference: (preference: ThemePreference) => void
 }
 
@@ -50,7 +53,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const context = useMemo<ThemeContextValue>(
-    () => ({ preference, theme, setPreference }),
+    () => ({ preference, theme, scheme: themeScheme(theme), setPreference }),
     [preference, setPreference, theme]
   )
 

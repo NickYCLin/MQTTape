@@ -16,7 +16,7 @@ import { MessageTimeline } from './components/MessageTimeline'
 import { PublishComposer } from './components/PublishComposer'
 import { ReplayDialog } from './components/ReplayDialog'
 import { SubscriptionPanel } from './components/SubscriptionPanel'
-import { ThemeToggle } from './components/ThemeToggle'
+import { ThemeMenu } from './components/ThemeMenu'
 import { TopicExplorer } from './components/TopicExplorer'
 import { UpdateControl } from './components/UpdateControl'
 import { useMqttSession } from './hooks/use-mqtt-session'
@@ -110,7 +110,7 @@ export default function App() {
 
         <div className="topbar-actions">
           <UpdateControl />
-          <ThemeToggle />
+          <ThemeMenu />
           <label className="select-inline">
             <span className="sr-only">{t('language.label')}</span>
             <select
