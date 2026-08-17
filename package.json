@@ -12,6 +12,7 @@
   "scripts": {
     "dev": "electron-vite dev",
     "dev:web": "vite --config vite.web.config.ts",
+    "preview:web": "vite preview --config vite.web.config.ts --host 127.0.0.1 --port 4173 --strictPort",
     "broker:dev": "node scripts/dev-broker.mjs",
     "build": "npm run typecheck && electron-vite build",
     "build:web": "npm run typecheck && vite build --config vite.web.config.ts",
@@ -20,7 +21,9 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:e2e": "npm run build && npm run build:web && playwright test",
+    "test:e2e:ci": "playwright test"
   },
   "dependencies": {
     "buffer": "^6.0.3",
@@ -31,6 +34,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.62.1",
     "@types/node": "^26.2.0",
     "@types/react": "^19.1.10",
     "@types/react-dom": "^19.1.7",

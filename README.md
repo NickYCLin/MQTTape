@@ -142,9 +142,12 @@ npm run broker:dev
 npm run typecheck
 npm run lint
 npm test
+npm run test:e2e
 npm run build
 npm run build:web
 ```
+
+`npm run test:e2e` 會建立桌面版與 Web Lite，接著以 Chromium 驗證 Web Lite 啟動、語系保存、Downlink 歷史匯出／清除，以及 Electron 限制型 Preload Bridge。第一次執行前若本機尚未安裝測試瀏覽器，請先執行 `npx playwright install chromium`。
 
 建立本機桌面套件：
 
