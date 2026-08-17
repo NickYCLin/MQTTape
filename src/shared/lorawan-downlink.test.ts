@@ -58,6 +58,16 @@ describe('LoRaWAN MQTT downlink builder', () => {
     })
   })
 
+  it('adds an optional The Things Stack correlation ID for exact status tracking', () => {
+    const result = buildLoRaWanDownlink({
+      ...baseInput,
+      correlationId: 'mqttape:test-downlink'
+    })
+
+    expect(result.ok && JSON.parse(result.publication.payload).downlinks[0])
+      .toMatchObject({ correlation_ids: ['mqttape:test-downlink'] })
+  })
+
   it('builds ChirpStack raw and decoded downlinks', () => {
     const raw = buildLoRaWanDownlink({
       ...baseInput,

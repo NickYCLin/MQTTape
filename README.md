@@ -1,158 +1,139 @@
 # MQTTape
 
-**Capture, inspect, and replay MQTT traffic.**
+**擷取、檢視並重播 MQTT 流量。**
 
-MQTTape is an open-source MQTT debugging client for desktop and the web. It keeps
-the immediacy of the original Chrome-based MQTT tools while adding a searchable
-message timeline and portable capture files.
+MQTTape 是一套可在桌面與瀏覽器使用的開源 MQTT 除錯工具。它保留早期 Chrome MQTT 工具即開即用的便利性，並加入可搜尋的訊息時間軸、Topic 樹、可攜式擷取檔及 LoRaWAN 輔助功能。
 
-## Current features
+## 目前功能
 
-- MQTT 3.1.1 and MQTT 5.0
-- MQTT over TCP, TLS, WebSocket, and secure WebSocket on desktop
-- Web Lite build for `ws://` and `wss://` brokers
-- QoS 0, 1, and 2 publish/subscribe
-- Retained messages, clean sessions, and automatic reconnect
-- Searchable inbound/outbound message timeline
-- Session-derived topic tree with hierarchy, traffic counts, and latest payloads
-- Retained-value snapshot that recognizes empty retained-message tombstones
-- Automatic Text, formatted JSON, and offset/ASCII Hex payload inspection
-- Binary payload detection plus lossless raw-payload downloads
-- Automatic The Things Stack and ChirpStack LoRaWAN uplink inspection
-- LoRaWAN device, frame, frequency, data-rate, RSSI, and SNR summaries
-- Embedded LoRaWAN Base64 frame decoding and lossless raw-frame downloads
-- Guided The Things Stack and ChirpStack MQTT downlink builder
-- Session statistics and binary-safe Base64 capture storage
-- Trim captures by direction, topic or payload, and time range before export
-- Export sanitized MQTTape capture files without passwords or local TLS paths
-- Preview captures before replay, select message directions, and control speed
-- Save reusable local replay presets for directions, speed, and topic remapping
-- Safely remap a complete topic prefix with a before/after preview
-- Pause, resume, or cancel a replay while preserving recorded ordering
-- Saved broker profiles with encrypted desktop secrets
-- Custom CA and client certificate/key selection for desktop mTLS
-- Switchable English and Traditional Chinese interfaces with a saved local preference
-- Background update checks and downloads for installed Windows and supported Linux builds
-- Portable Windows build plus installers for Windows, macOS, and Linux
+- 支援 MQTT 3.1.1 與 MQTT 5.0
+- 桌面版支援 MQTT over TCP、TLS、WebSocket 與 Secure WebSocket
+- Web Lite 支援 `ws://` 與 `wss://` Broker
+- 支援 QoS 0、1、2 的發布與訂閱
+- 支援 Retained Message、Clean Session 與自動重新連線
+- 可搜尋傳入與傳出訊息的時間軸
+- 依工作階段建立 Topic 階層、流量統計及最新 Payload
+- Retained Value 快照，並能辨識空白 Retained Message Tombstone
+- 自動以文字、格式化 JSON、Hex Offset／ASCII 檢視 Payload
+- 偵測二進位 Payload，並可無損下載原始資料
+- 自動辨識 The Things Stack 與 ChirpStack LoRaWAN Uplink
+- 顯示 LoRaWAN 裝置、訊框、頻率、Data Rate、RSSI 與 SNR 摘要
+- 解碼 LoRaWAN Base64 訊框，並可無損下載原始訊框
+- 引導式 The Things Stack 與 ChirpStack MQTT Downlink 建立器
+- 追蹤 Downlink 的提出、排入佇列、送出、裝置確認、未確認及失敗狀態
+- 工作階段統計與以 Base64 儲存的二進位安全擷取格式
+- 匯出前可依方向、Topic／Payload 及時間範圍裁切擷取內容
+- 匯出不含密碼或本機 TLS 路徑的 MQTTape 擷取檔
+- 重播前可預覽擷取內容、選擇訊息方向並控制速度
+- 可儲存重播方向、速度與 Topic Remap 的本機預設
+- 以變更前後預覽安全替換完整 Topic Prefix
+- 重播期間可暫停、繼續或取消，並維持原始訊息順序
+- 桌面版 Broker 設定檔會以作業系統加密機制保存秘密
+- 桌面版支援自訂 CA 與 Client Certificate／Key 的 mTLS
+- 可切換英文與繁體中文介面，並在本機記住偏好
+- 已安裝的 Windows 與支援的 Linux 套件可在背景檢查及下載更新
+- 提供 Windows 免安裝版，以及 Windows、macOS、Linux 安裝套件
+- 提供跟隨系統、Midnight、Tape、Magenta、高對比、Daylight 與 Paper 外觀主題
 
-> MQTTape is a client, not a broker. Connect it to Mosquitto, EMQX, HiveMQ, or
-> another MQTT broker you control. Do not send secrets to public test brokers.
+> MQTTape 是 MQTT Client，不是 Broker。請將它連線至你管理的 Mosquitto、EMQX、HiveMQ 或其他 MQTT Broker；不要把帳號、密碼或敏感資料送到公開測試 Broker。
 
-## Desktop and Web Lite
+## 桌面版與 Web Lite
 
-| Capability | Desktop | Web Lite |
+| 功能 | 桌面版 | Web Lite |
 | --- | ---: | ---: |
-| MQTT TCP (`mqtt://`) | Yes | No |
-| MQTT TLS (`mqtts://`) | Yes | No |
-| WebSocket (`ws://`) | Yes | Yes |
-| Secure WebSocket (`wss://`) | Yes | Yes |
-| Local capture export/replay | Yes | Yes |
-| Saved connection profiles | Encrypted secrets | No stored secrets |
-| Custom CA and mTLS | Yes | No |
-| Automatic application updates | Supported packages | Browser-managed |
+| MQTT TCP（`mqtt://`） | 支援 | 不支援 |
+| MQTT TLS（`mqtts://`） | 支援 | 不支援 |
+| WebSocket（`ws://`） | 支援 | 支援 |
+| Secure WebSocket（`wss://`） | 支援 | 支援 |
+| 本機擷取匯出／重播 | 支援 | 支援 |
+| 儲存連線設定檔 | 秘密會加密 | 不儲存秘密 |
+| 自訂 CA 與 mTLS | 支援 | 不支援 |
+| 應用程式自動更新 | 支援的安裝套件 | 由瀏覽器處理 |
 
-Browsers cannot open arbitrary TCP sockets, so Web Lite intentionally limits the
-protocol selector to WebSocket transports.
+瀏覽器無法開啟任意 TCP Socket，因此 Web Lite 的通訊協定選單只提供 WebSocket Transport。
+
+Web Lite 發布於 <https://nickyclin.github.io/MQTTape/>。由於 GitHub Pages 使用 HTTPS，遠端 Broker 通常必須提供具有受信任憑證的 `wss://` Endpoint；瀏覽器會阻擋 HTTPS 頁面連線至不安全的 `ws://`。
 
 ## LoRaWAN MQTT
 
-MQTTape connects to the MQTT side of a LoRaWAN deployment; it does not receive
-LoRa radio traffic directly. When an uplink matches the official JSON envelope
-from [The Things Stack](https://www.thethingsindustries.com/docs/integrations/data-formats/)
-or [ChirpStack](https://www.chirpstack.io/docs/chirpstack/integrations/events/),
-the payload inspector automatically opens a LoRaWAN view with device identifiers,
-FPort, frame counter, frequency, data rate, gateway RSSI/SNR, decoded application
-data, and the embedded binary frame.
+MQTTape 連接的是 LoRaWAN 平台的 MQTT 介面，不會直接接收 LoRa 無線電訊號。當 Uplink 符合 [The Things Stack](https://www.thethingsindustries.com/docs/integrations/data-formats/) 或 [ChirpStack](https://www.chirpstack.io/docs/chirpstack/integrations/events/) 的官方 JSON Envelope 時，Payload Inspector 會自動顯示裝置識別資料、FPort、Frame Counter、頻率、Data Rate、Gateway RSSI／SNR、已解碼的應用資料與內嵌二進位訊框。
 
-Typical uplink subscriptions include `v3/<application-id>/devices/+/up` for The
-Things Stack and `application/<application-id>/device/+/event/up` for ChirpStack.
-Broker hostnames, credentials, tenant suffixes, and topic structures can vary by
-deployment, so use the values supplied by the network operator.
+常見 Uplink 訂閱 Topic：
 
-The guided downlink builder follows the default MQTT formats documented by
-[The Things Stack](https://www.thethingsindustries.com/docs/integrations/other-integrations/mqtt/)
-and [ChirpStack](https://www.chirpstack.io/docs/chirpstack/integrations/mqtt.html).
-It accepts UTF-8 text, Hex bytes, Base64, or decoded JSON, generates the platform
-topic and JSON envelope, and shows both before publishing. Downlink commands are
-always published as non-retained MQTT messages. Custom server topic templates can
-still be sent with MQTTape's standard publish composer.
+```text
+The Things Stack: v3/<application-id>/devices/+/up
+ChirpStack:      application/<application-id>/device/+/event/up
+```
 
-Web Lite is published at <https://nickyclin.github.io/MQTTape/>. Because GitHub
-Pages uses HTTPS, remote brokers must normally expose a trusted `wss://` endpoint;
-browsers block insecure `ws://` connections from an HTTPS page.
+Broker Host、認證資料、Tenant 後綴與 Topic 結構可能因部署方式而不同，請以 LoRaWAN Network Operator 提供的值為準。
 
-## Downloads
+引導式 Downlink 建立器遵循 [The Things Stack MQTT](https://www.thethingsindustries.com/docs/integrations/other-integrations/mqtt/) 與 [ChirpStack MQTT](https://www.chirpstack.io/docs/chirpstack/integrations/mqtt.html) 的預設格式。你可以輸入 UTF-8 文字、Hex 位元組、Base64 或已解碼 JSON；MQTTape 會先產生並顯示平台 Topic 與 JSON Envelope，再讓你發布。Downlink 命令一律使用非 Retained MQTT Message；自訂伺服器 Topic Template 仍可使用一般發布工具送出。
 
-Download the latest desktop packages and checksum manifest from
-[GitHub Releases](https://github.com/NickYCLin/MQTTape/releases/latest). Windows
-users can choose the `Setup` installer for automatic application updates or the
-portable executable for manual updates.
+### Downlink 狀態追蹤
 
-## Code signing policy
+在「Downlinks」頁籤中，MQTTape 會整理本次工作階段觀察到的 Downlink 要求與平台回報。請同時訂閱狀態 Topic：
 
-Free code signing provided by [SignPath.io](https://about.signpath.io/), certificate by
-[SignPath Foundation](https://signpath.org/).
+```text
+The Things Stack: v3/<application-id>/devices/+/down/#
+ChirpStack:      application/<application-id>/device/+/event/+
+```
 
-- Committer and reviewer: [NickYCLin](https://github.com/NickYCLin)
-- Approver: [NickYCLin](https://github.com/NickYCLin)
-- Every release signing request requires manual approval by the approver.
-- Privacy policy: [PRIVACY.md](PRIVACY.md)
+- The Things Stack：MQTTape 建立的命令會加入唯一 `correlation_ids`，用來精確關聯 `queued`、`sent`、`ack`、`nack` 與 `failed`。
+- ChirpStack：`txack` 與 `ack` 會以 `queueItemId` 精確關聯；由於原始 MQTT Downlink 命令不含平台產生的 Queue Item ID，首次把命令連到 `txack` 時只能依同一裝置的事件順序推定，畫面會明確標示。
+- 狀態追蹤只使用 MQTTape 本次工作階段實際看見的訊息，不會查詢 LoRaWAN 平台的完整佇列，也不會在缺少回報事件時自行判定無線傳送成功。
 
-Windows packages published before the SignPath enrollment and signing workflow
-are complete remain unsigned. Verify those downloads with the release checksum
-manifest before running them.
+## 下載
 
-## Profiles and mTLS
+請從 [GitHub Releases](https://github.com/NickYCLin/MQTTape/releases/latest) 下載最新版桌面套件與 Checksum Manifest。Windows 使用者可選擇 `Setup` 安裝程式以使用應用程式自動更新，或選擇需要手動更新的 Portable 執行檔。
 
-Desktop profiles are stored in the Electron user-data directory. Passwords and
-private-key passphrases are encrypted with the operating system through Electron
-`safeStorage`; MQTTape never falls back to plaintext secret storage. Web Lite can
-save non-secret connection settings in browser storage but intentionally drops
-passwords and certificate paths.
+## 程式碼簽章政策
 
-TLS files must be selected with MQTTape's file picker. A client certificate and
-private key must be configured together, while a custom CA is optional. Capture
-exports omit passwords, passphrases, and every local certificate path.
+免費程式碼簽章由 [SignPath.io](https://about.signpath.io/) 提供，憑證由 [SignPath Foundation](https://signpath.org/) 提供。
 
-## Automatic updates
+- Committer 與 Reviewer：[NickYCLin](https://github.com/NickYCLin)
+- Approver：[NickYCLin](https://github.com/NickYCLin)
+- 每次 Release 的簽章要求都必須由 Approver 手動核准
+- 隱私權政策：[PRIVACY.md](PRIVACY.md)
 
-The Windows `Setup` installer and supported Linux packages check GitHub Releases
-after launch and every six hours. Updates download in the background; once ready,
-choose **Restart to update** in the header. A downloaded update is also applied on
-a normal application exit.
+在 SignPath 申請與簽章流程完成之前發布的 Windows 套件仍未簽章。執行前請先使用 Release 中的 Checksum Manifest 驗證下載檔案。
 
-The Windows portable executable cannot safely replace itself, so it links to the
-latest manual download. Unsigned macOS builds also remain manual until code
-signing is configured. Builds released before automatic updating was introduced
-need one final manual installation of a newer `Setup` package; later releases can
-update in place without uninstalling first.
+## 設定檔與 mTLS
 
-## Development
+桌面版設定檔會存放在 Electron User Data 目錄。密碼與 Private Key Passphrase 會透過 Electron `safeStorage` 使用作業系統加密；MQTTape 不會退回以純文字儲存秘密。Web Lite 可以保存非敏感的連線設定，但會刻意捨棄密碼與憑證路徑。
 
-Requirements:
+TLS 檔案必須使用 MQTTape 的檔案選擇器指定。Client Certificate 與 Private Key 必須成對設定，自訂 CA 則可選填。擷取匯出不會包含密碼、Passphrase 或任何本機憑證路徑。
 
-- Node.js 20 or newer
-- npm 10 or newer
+## 自動更新
+
+Windows `Setup` 安裝版與支援的 Linux 套件會在啟動後及每六小時檢查 GitHub Releases。更新會在背景下載；準備完成後，可在標題列選擇「重新啟動以更新」。若正常關閉程式，已下載的更新也會在結束時套用。
+
+Windows Portable 執行檔無法安全地自行取代，因此只會連到最新版手動下載頁。未簽章的 macOS Build 在設定程式碼簽章前也維持手動更新。若目前安裝的是導入自動更新之前的版本，需要最後一次手動安裝新版 `Setup`；之後即可直接更新，不必先解除安裝。
+
+## 開發
+
+環境需求：
+
+- Node.js 20 以上
+- npm 10 以上
 
 ```bash
 npm install
 npm run dev
 ```
 
-Run Web Lite only:
+只啟動 Web Lite：
 
 ```bash
 npm run dev:web
 ```
 
-For local Web Lite testing, start the included ephemeral broker in another
-terminal and connect with MQTT 3.1.1 to `ws://127.0.0.1:9001/mqtt`:
+若要在本機測試 Web Lite，可在另一個 Terminal 啟動內附的暫時性 Broker，接著以 MQTT 3.1.1 連線至 `ws://127.0.0.1:9001/mqtt`：
 
 ```bash
 npm run broker:dev
 ```
 
-Quality checks:
+品質檢查：
 
 ```bash
 npm run typecheck
@@ -162,81 +143,57 @@ npm run build
 npm run build:web
 ```
 
-Create a local desktop package:
+建立本機桌面套件：
 
 ```bash
 npm run package
 ```
 
-Unsigned downloads may trigger Windows SmartScreen or macOS Gatekeeper. See the
-release notes for platform-specific installation guidance.
+未簽章的下載檔可能觸發 Windows SmartScreen 或 macOS Gatekeeper，請參考各版本的 Release Notes。
 
-## Capture format
+## 擷取格式
 
-Capture files are versioned JSON documents with the format identifier
-`mqttape-capture`. Connection passwords are never included. Payloads are stored
-as Base64 so binary data can be replayed without loss.
+擷取檔是版本化 JSON 文件，格式識別碼為 `mqttape-capture`，且永遠不包含連線密碼。Payload 以 Base64 儲存，因此二進位資料也能無損重播。
 
-The replay preview defaults to outgoing messages only. Incoming messages can be
-included explicitly, and retained-message counts are shown before publishing.
-Replay preserves message order and relative delays, offers 0.25x through 4x
-speed, and can be paused or cancelled. Each delay is capped at two seconds and
-the complete timing window is compressed to at most 30 seconds, preventing an
-old capture from unexpectedly waiting for hours.
+重播預覽預設只選擇傳出訊息；你可以明確加入傳入訊息，並在發布前查看 Retained Message 數量。重播會維持訊息順序與相對延遲，提供 0.25x 到 4x 速度，且可暫停或取消。每段延遲最多兩秒，完整時序則壓縮在 30 秒內，避免舊擷取檔意外等待數小時。
 
-Topic prefix remapping can redirect a capture away from production topics before
-replay. MQTTape replaces only complete prefix boundaries, previews the changed
-topics, and blocks empty, wildcard, null-character, or oversized publish topics.
+Topic Prefix Remap 可以在重播前把擷取內容從 Production Topic 導向其他環境。MQTTape 只替換完整 Prefix Boundary，會預覽變更結果，並阻擋空白、包含萬用字元、Null Character 或超過長度限制的發布 Topic。
 
-## Topic Explorer
+## Topic 檢視器
 
-The Topics view groups traffic observed during the current session into an MQTT
-topic hierarchy. Each level shows aggregate incoming/outgoing counts, the latest
-payload, and retained state. Clicking a topic opens its matching timeline.
+「Topics」頁籤會把本次工作階段觀察到的流量整理成 MQTT Topic 階層。每一層會顯示傳入／傳出數量、最新 Payload 與 Retained 狀態；點選 Topic 可開啟對應的時間軸訊息。
 
-The retained panel is intentionally a **session-derived snapshot**, not a full
-broker inventory: MQTT has no standard command for enumerating every topic on a
-broker. MQTTape adds retained values it observes or publishes and removes them
-when it sees an empty retained publish (the MQTT retained-message tombstone).
+Retained 面板是刻意設計成「依工作階段產生的快照」，不是 Broker 的完整清單，因為 MQTT 沒有列出 Broker 所有 Topic 的標準指令。MQTTape 會加入它觀察或發布的 Retained Value，也會在看見空白 Retained Publish（MQTT Retained Message Tombstone）時移除該值。
 
 ## Payload Inspector
 
-Expand any timeline message to inspect the original payload bytes. MQTTape opens
-valid JSON in a formatted JSON view, printable UTF-8 as text, and binary data as
-an offset/ASCII Hex dump. Text, JSON, and Hex remain available as applicable so
-the same payload can be compared without leaving the timeline.
+展開時間軸訊息即可檢視原始 Payload 位元組。MQTTape 會把有效 JSON 顯示成格式化 JSON、可列印 UTF-8 顯示成文字、二進位資料顯示成 Offset／ASCII Hex Dump；適用時也可在文字、JSON 與 Hex 間切換比較。
 
-The **Raw** action downloads the exact bytes stored in `payloadBase64`; it does
-not re-encode the decoded text. Large on-screen previews are limited to the first
-256 KB to keep the UI responsive, while the raw download retains the complete
-payload. Imported captures are rejected when Base64 is malformed or its decoded
-length does not match the recorded byte size.
+「Raw」會下載 `payloadBase64` 中儲存的原始位元組，不會重新編碼已解碼文字。為維持介面流暢，大型 Payload 的畫面預覽最多顯示前 256 KB，但原始下載仍保留完整資料。若匯入擷取檔的 Base64 格式錯誤，或解碼後長度與記錄的 Byte Size 不符，MQTTape 會拒絕匯入。
 
-## Security
+## 安全性
 
-- Electron renderer processes have no Node.js integration.
-- MQTT operations run behind a narrow, context-isolated preload API.
-- Broker passwords remain in memory and are excluded from capture exports.
-- Saved desktop secrets use operating-system-backed encryption with no plaintext fallback.
-- TLS files are restricted to paths explicitly selected by the user or loaded from a profile.
-- TLS certificate verification is enabled by default.
+- Electron Renderer 不啟用 Node.js Integration
+- MQTT 操作只能透過範圍受限且啟用 Context Isolation 的 Preload API
+- Broker 密碼只保留在記憶體，且不會寫入擷取匯出
+- 桌面版秘密使用作業系統支援的加密，不提供純文字備援
+- TLS 檔案只能使用使用者明確選擇，或從設定檔載入的路徑
+- 預設啟用 TLS 憑證驗證
 
-Please report vulnerabilities according to [SECURITY.md](SECURITY.md).
+若要回報安全性問題，請依照 [SECURITY.md](SECURITY.md) 說明處理。
 
 ## Roadmap
 
-- CBOR, Protobuf, and Sparkplug B payload viewers
-- MQTT 5 properties and QoS packet-flow inspection
-- Multiple simultaneous broker sessions
-- Last Will, custom WebSocket headers, and advanced authentication
-- Signed installers and additional CPU architectures
+- CBOR、Protobuf 與 Sparkplug B Payload Viewer
+- MQTT 5 Properties 與 QoS Packet Flow 檢視
+- 同時連線多個 Broker 工作階段
+- Last Will、自訂 WebSocket Header 與進階認證
+- 已簽章安裝程式與更多 CPU 架構
 
-## Contributing
+## 參與貢獻
 
-Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request. Commit
-subjects use Traditional Chinese and the Conventional Commit structure used by
-this project.
+提出 Pull Request 前請先閱讀 [CONTRIBUTING.md](CONTRIBUTING.md)。Commit Subject 使用繁體中文，並遵循本專案的 Conventional Commits 格式。
 
-## License
+## 授權
 
 [MIT](LICENSE) © 2026 NickYCLin

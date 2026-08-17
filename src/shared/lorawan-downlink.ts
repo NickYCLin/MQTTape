@@ -23,6 +23,7 @@ export interface LoRaWanDownlinkInput {
   payload: string
   operation?: TheThingsStackDownlinkOperation
   priority?: TheThingsStackDownlinkPriority
+  correlationId?: string
 }
 
 export type LoRaWanDownlinkError =
@@ -48,6 +49,12 @@ export interface LoRaWanMqttPublication {
 export type LoRaWanDownlinkBuildResult =
   | { ok: true; publication: LoRaWanMqttPublication }
   | { ok: false; error: LoRaWanDownlinkError }
+
+export function createLoRaWanCorrelationId(): string {
+  const identifier = globalThis.crypto?.randomUUID?.()
+    ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
+  return `mqttape:${identifier}`
+}
 
 function validTopicSegment(value: string): boolean {
   return value.length > 0 && !/[\s/+#\0]/.test(value)
@@ -151,7 +158,10 @@ export function buildLoRaWanDownlink(
         ? { frm_payload: encoded?.base64 ?? '' }
         : { decoded_payload: decodedPayload }),
       priority: input.priority ?? 'NORMAL',
-      confirmed: input.confirmed
+      confirmed: input.confirmed,
+      ...(input.correlationId?.trim()
+        ? { correlation_ids: [input.correlationId.trim()] }
+        : {})
     }
     return {
       ok: true,

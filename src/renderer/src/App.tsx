@@ -2,6 +2,7 @@ import { useMemo, useRef, useState, type ChangeEvent } from 'react'
 import { ConnectionPanel } from './components/ConnectionPanel'
 import {
   DownloadIcon,
+  DownlinkIcon,
   GithubIcon,
   PlayIcon,
   SearchIcon,
@@ -13,6 +14,7 @@ import {
 } from './components/icons'
 import { CaptureExportDialog } from './components/CaptureExportDialog'
 import { MessageTimeline } from './components/MessageTimeline'
+import { LoRaWanDownlinkTracker } from './components/LoRaWanDownlinkTracker'
 import { PublishComposer } from './components/PublishComposer'
 import { ReplayDialog } from './components/ReplayDialog'
 import { SubscriptionPanel } from './components/SubscriptionPanel'
@@ -35,11 +37,31 @@ const statusLabelKeys: Record<ConnectionState, TranslationKey> = {
   error: 'status.error'
 }
 
+type SessionView = 'timeline' | 'topics' | 'downlinks'
+
+const sessionTitleKeys: Record<SessionView, TranslationKey> = {
+  timeline: 'session.timeline',
+  topics: 'session.topicTree',
+  downlinks: 'session.downlinks'
+}
+
+const sessionFilterPlaceholderKeys: Record<SessionView, TranslationKey> = {
+  timeline: 'session.filterMessagesPlaceholder',
+  topics: 'session.filterTopicsPlaceholder',
+  downlinks: 'session.filterDownlinksPlaceholder'
+}
+
+const sessionFilterLabelKeys: Record<SessionView, TranslationKey> = {
+  timeline: 'session.filterMessages',
+  topics: 'session.filterTopics',
+  downlinks: 'session.filterDownlinks'
+}
+
 export default function App() {
   const { language, setLanguage, t, translateMessage, formatNumber } = useI18n()
   const session = useMqttSession()
   const [query, setQuery] = useState('')
-  const [activeView, setActiveView] = useState<'timeline' | 'topics'>('timeline')
+  const [activeView, setActiveView] = useState<SessionView>('timeline')
   const [captureToExport, setCaptureToExport] = useState<CaptureFile | null>(null)
   const [replayCapture, setReplayCapture] = useState<CaptureFile | null>(null)
   const captureInputRef = useRef<HTMLInputElement>(null)
@@ -190,7 +212,7 @@ export default function App() {
 
           <section className="stage-panel" aria-labelledby="stage-title">
             <h2 className="sr-only" id="stage-title">
-              {t(activeView === 'timeline' ? 'session.timeline' : 'session.topicTree')}
+              {t(sessionTitleKeys[activeView])}
             </h2>
             <div className="stage-toolbar">
               <div className="segmented" role="group" aria-label={t('session.view')}>
@@ -212,14 +234,23 @@ export default function App() {
                   <TopicTreeIcon width={15} height={15} />
                   <span>{t('session.topicsTab')}</span>
                 </button>
+                <button
+                  className={activeView === 'downlinks' ? 'active' : ''}
+                  type="button"
+                  aria-pressed={activeView === 'downlinks'}
+                  onClick={() => setActiveView('downlinks')}
+                >
+                  <DownlinkIcon width={15} height={15} />
+                  <span>{t('session.downlinksTab')}</span>
+                </button>
               </div>
 
               <label className="search">
                 <SearchIcon width={15} height={15} />
                 <input
                   value={query}
-                  placeholder={t(activeView === 'timeline' ? 'session.filterMessagesPlaceholder' : 'session.filterTopicsPlaceholder')}
-                  aria-label={t(activeView === 'timeline' ? 'session.filterMessages' : 'session.filterTopics')}
+                  placeholder={t(sessionFilterPlaceholderKeys[activeView])}
+                  aria-label={t(sessionFilterLabelKeys[activeView])}
                   onChange={(event) => setQuery(event.target.value)}
                 />
                 {query && (
@@ -279,10 +310,10 @@ export default function App() {
               </p>
             )}
 
-            <div className={`stage-scroll ${activeView === 'topics' ? 'no-scroll' : ''}`}>
+            <div className={`stage-scroll ${activeView !== 'timeline' ? 'no-scroll' : ''}`}>
               {activeView === 'timeline' ? (
                 <MessageTimeline messages={visibleMessages} />
-              ) : (
+              ) : activeView === 'topics' ? (
                 <TopicExplorer
                   messages={session.messages}
                   query={query}
@@ -291,6 +322,8 @@ export default function App() {
                     setActiveView('timeline')
                   }}
                 />
+              ) : (
+                <LoRaWanDownlinkTracker messages={session.messages} query={query} />
               )}
             </div>
           </section>

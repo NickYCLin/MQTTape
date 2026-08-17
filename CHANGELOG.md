@@ -8,6 +8,8 @@ All notable changes to MQTTape are documented in this file.
 
 - Six appearance themes — Midnight, Tape, Magenta, High contrast, Daylight, and Paper — plus a follow-system option.
 - Top-bar theme picker with colour swatches, grouped by colour scheme, persisted per device.
+- Session-derived LoRaWAN downlink status tracking for The Things Stack and ChirpStack.
+- Exact The Things Stack correlation IDs plus ChirpStack `queueItemId` event linking.
 
 ### Changed
 
@@ -16,6 +18,7 @@ All notable changes to MQTTape are documented in this file.
 - Replaced the statistics cards, session toolbar, message rows, and dialogs with a shared component layer.
 - Redrew the application icon, favicon, and brand mark so the cassette reads as a cassette rather than a face, and matched them to the accent palette.
 - Corrected misleading action icons: replay, disconnect, update checks, and the LoRaWAN downlink builder no longer borrow icons from unrelated actions.
+- Rewrote the project README in Traditional Chinese and documented downlink feedback subscriptions and correlation limits.
 
 ## [0.10.0] - 2026-08-17
 

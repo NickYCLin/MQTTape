@@ -2,6 +2,7 @@ import { useMemo, useState, type FormEvent } from 'react'
 import type { MqttQos } from '../../../shared/contracts'
 import {
   buildLoRaWanDownlink,
+  createLoRaWanCorrelationId,
   type LoRaWanDownlinkError,
   type LoRaWanDownlinkPayloadFormat,
   type LoRaWanDownlinkProvider,
@@ -59,6 +60,7 @@ export function LoRaWanDownlinkDialog({
   const [operation, setOperation] = useState<TheThingsStackDownlinkOperation>('push')
   const [priority, setPriority] = useState<TheThingsStackDownlinkPriority>('NORMAL')
   const [qos, setQos] = useState<MqttQos>(0)
+  const [correlationId] = useState(createLoRaWanCorrelationId)
   const [attempted, setAttempted] = useState(false)
   const [publishing, setPublishing] = useState(false)
 
@@ -72,10 +74,12 @@ export function LoRaWanDownlinkDialog({
     payloadFormat,
     payload,
     operation,
-    priority
+    priority,
+    correlationId: provider === 'the-things-stack' ? correlationId : undefined
   }), [
     applicationId,
     confirmed,
+    correlationId,
     deviceId,
     fPort,
     operation,
@@ -229,6 +233,13 @@ export function LoRaWanDownlinkDialog({
           {provider === 'the-things-stack' && operation === 'replace' && (
             <div className="notice warn">
               <span>{t('lorawan.downlink.replaceWarning')}</span>
+            </div>
+          )}
+
+          {provider === 'the-things-stack' && (
+            <div className="notice info">
+              <span>{t('lorawan.downlink.correlationHelp')}</span>
+              <code className="mono">{correlationId}</code>
             </div>
           )}
 
