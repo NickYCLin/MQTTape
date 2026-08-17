@@ -4,6 +4,12 @@ All notable changes to MQTTape are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Guided The Things Stack and ChirpStack LoRaWAN MQTT downlink builder.
+- UTF-8, Hex, Base64, and decoded-JSON input with exact topic and envelope previews.
+- Platform-aware identifier, FPort, payload, and non-retained publish safeguards.
+
 ## [0.9.0] - 2026-08-17
 
 ### Added
