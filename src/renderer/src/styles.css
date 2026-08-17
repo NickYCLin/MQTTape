@@ -1236,6 +1236,72 @@ input[type='checkbox'] {
 .payload-tree-item.kind-undefined .payload-tree-value,
 .payload-tree-item.kind-reference .payload-tree-value { color: var(--text-3); }
 
+.protobuf-schema-controls {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.7fr) minmax(220px, 1.3fr) 30px auto;
+  align-items: end;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.protobuf-schema-controls .field > span { font-size: 10.5px; letter-spacing: 0.03em; text-transform: uppercase; }
+.protobuf-schema-controls select { height: 30px; font-family: var(--font-mono); font-size: 11.5px; }
+.protobuf-import { position: relative; overflow: hidden; }
+.protobuf-import input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.protobuf-delete { align-self: end; }
+.protobuf-privacy { margin: -2px 0 0; }
+.protobuf-empty {
+  display: grid;
+  gap: 5px;
+  padding: 16px;
+  color: var(--text-2);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius);
+  text-align: center;
+}
+.protobuf-empty strong { color: var(--text); font-size: 13px; }
+.protobuf-empty p { font-size: 11.5px; line-height: 1.55; }
+.protobuf-decoded-count { color: var(--text-3); font-size: 10.5px; }
+
+.sparkplug-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 7px;
+  margin: 0;
+}
+.sparkplug-meta > div {
+  min-width: 0;
+  padding: 8px 9px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.sparkplug-meta dt { margin-bottom: 3px; color: var(--text-3); font-size: 10px; font-weight: 650; text-transform: uppercase; }
+.sparkplug-meta dd { overflow: hidden; margin: 0; font-size: 11.5px; text-overflow: ellipsis; white-space: nowrap; }
+.sparkplug-metrics,
+.sparkplug-tree { overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+.sparkplug-section-head {
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.sparkplug-section-head h4 { font-size: 12px; }
+.sparkplug-metrics table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+.sparkplug-metrics th,
+.sparkplug-metrics td { max-width: 260px; padding: 7px 9px; border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; }
+.sparkplug-metrics th { color: var(--text-3); font-size: 10px; letter-spacing: 0.03em; text-transform: uppercase; }
+.sparkplug-metrics tbody tr:last-child td { border-bottom: 0; }
+.sparkplug-value { overflow: hidden; text-overflow: ellipsis; }
+.sparkplug-tree .payload-tree-scroll { max-height: 300px; border: 0; border-radius: 0; }
+.sparkplug-source { color: var(--text-3); font-size: 10.5px; }
+.sparkplug-source a { color: var(--accent); }
+
 /* ===== LoRaWAN inspector =============================================== */
 
 .lorawan { display: grid; gap: 12px; padding: 12px; }
@@ -2050,6 +2116,10 @@ input[type='checkbox'] {
   .packet-flow-result { grid-column: 1 / -1; grid-row: 2; justify-items: start; }
   .structured-payload-head { flex-direction: column; }
   .structured-payload-tags { justify-content: flex-start; }
+  .protobuf-schema-controls { grid-template-columns: 1fr 30px; }
+  .protobuf-message-type { grid-column: 1 / -1; grid-row: 2; }
+  .protobuf-delete { grid-column: 2; grid-row: 1; }
+  .protobuf-import { grid-column: 1 / -1; }
   .downlink-track-head,
   .downlink-event-line { align-items: flex-start; flex-direction: column; }
   .downlink-track-meta { grid-template-columns: repeat(2, minmax(0, 1fr)); }

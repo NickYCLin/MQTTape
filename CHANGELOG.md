@@ -6,6 +6,8 @@ All notable changes to MQTTape are documented in this file.
 
 ### Added
 
+- Protobuf schema-bundle import, explicit message-type selection, CSP-safe wire decoding, local schema persistence, unknown-field diagnostics, and type-preserving trees.
+- Automatic Sparkplug B topic recognition with the official Eclipse Tahu Payload schema, topic metadata, Metric summaries, and complete payload trees.
 - CBOR and CBOR Sequence payload inspection with Content-Type detection, guarded heuristic detection, type-preserving trees, and bounded previews.
 - Session-only QoS 0/1/2 packet-flow inspection with TX/RX direction, Packet ID, DUP retransmission, MQTT 5 Reason Code, duration, and pending-handshake diagnostics.
 - Local LoRaWAN downlink history that retains up to 1,000 parsed events across restarts without storing raw MQTT payloads or broker credentials.
