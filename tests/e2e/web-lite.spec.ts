@@ -58,14 +58,28 @@ test('Web Lite starts and persists the selected interface language', async ({ pa
 
   await expect(page).toHaveTitle('MQTTape')
   await expect(page.getByRole('heading', { name: 'Connection' })).toBeVisible()
+  await expect(page.getByRole('note')).toContainText(
+    'MQTT over Secure WebSocket · 8084 is a common Broker default · encrypted'
+  )
+  await expect(page.getByRole('note')).toContainText(
+    'Web Lite requires WS or WSS because browsers cannot open raw MQTT TCP sockets.'
+  )
+
+  await page.getByLabel('Protocol').selectOption('ws')
+  await expect(page.getByLabel('Port')).toHaveValue('8083')
+  await expect(page.getByRole('note')).toContainText(
+    'MQTT over WebSocket · 8083 is a common Broker default · unencrypted'
+  )
 
   const language = page.getByLabel('Interface language')
   await language.selectOption('zh-TW')
   await expect(page.getByRole('heading', { name: '連線' })).toBeVisible()
+  await expect(page.getByRole('note')).toContainText('8083 是部分 Broker 的常見預設')
 
   await page.reload()
   await expect(page.getByLabel('介面語言')).toHaveValue('zh-TW')
   await expect(page.getByRole('heading', { name: '連線' })).toBeVisible()
+  await expect(page.getByRole('note')).toContainText('此連接埠只是起始建議值')
 })
 
 test('Web Lite inspects MQTT 5 publish properties in both languages', async ({ page }) => {

@@ -730,13 +730,14 @@ input[type='checkbox'] {
 }
 
 .sidebar {
-  display: grid;
-  align-content: start;
+  display: flex;
+  flex-direction: column;
   gap: 12px;
   padding: 16px;
   overflow-y: auto;
   border-right: 1px solid var(--border);
 }
+.sidebar > .panel { flex: none; }
 
 .stage {
   min-width: 0;
@@ -781,6 +782,19 @@ input[type='checkbox'] {
   grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 6px;
 }
+
+.protocol-guide {
+  display: grid;
+  gap: 3px;
+  padding: 9px 10px;
+  color: var(--text-2);
+  border: 1px solid color-mix(in srgb, var(--accent) 20%, var(--border));
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+.protocol-guide strong { color: var(--text); font-size: 12px; font-weight: 650; }
 
 .advanced { border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
 .advanced summary {

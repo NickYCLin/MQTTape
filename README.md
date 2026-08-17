@@ -53,6 +53,8 @@ MQTTape 是一套可在桌面與瀏覽器使用的開源 MQTT 除錯工具。它
 
 瀏覽器無法開啟任意 TCP Socket，因此 Web Lite 的通訊協定選單只提供 WebSocket Transport。
 
+MQTT over TCP 通常使用登記連接埠 `1883`，MQTT over TLS 通常使用 `8883`。`8083` 與 `8084` 則是部分 Broker 分別提供 `ws://` 與 `wss://` MQTT Endpoint 時採用的常見預設，並非 MQTT 強制規定；Mosquitto 等部署也常使用其他連接埠。MQTTape 切換通訊協定時填入的 Port 只是起始建議值，請一律以 Broker 管理者提供的 Host、Port 與 WebSocket Path 為準。
+
 Web Lite 發布於 <https://nickyclin.github.io/MQTTape/>。由於 GitHub Pages 使用 HTTPS，遠端 Broker 通常必須提供具有受信任憑證的 `wss://` Endpoint；瀏覽器會阻擋 HTTPS 頁面連線至不安全的 `ws://`。
 
 ## LoRaWAN MQTT

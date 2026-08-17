@@ -24,6 +24,11 @@ test('desktop shell starts with the restricted preload bridge', async () => {
     const window = await application.firstWindow()
     await expect(window).toHaveTitle('MQTTape')
     await expect(window.getByText('Desktop Full', { exact: true })).toBeVisible()
+    await expect(window.getByLabel('Protocol')).toHaveValue('mqtt')
+    await expect(window.getByLabel('Port')).toHaveValue('1883')
+    await expect(window.getByRole('note')).toContainText(
+      'MQTT over TCP · registered port 1883 · unencrypted'
+    )
 
     const bridgeMethods = await window.evaluate(() => Object.keys(window.mqttape ?? {}).sort())
     expect(bridgeMethods).toEqual(expect.arrayContaining([
@@ -39,6 +44,7 @@ test('desktop shell starts with the restricted preload bridge', async () => {
 
     await window.getByLabel('Interface language').selectOption('zh-TW')
     await expect(window.getByTitle('桌面完整版')).toBeVisible()
+    await expect(window.getByRole('note')).toContainText('登記連接埠 1883')
   } finally {
     try {
       await application?.close()
