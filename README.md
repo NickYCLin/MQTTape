@@ -21,6 +21,7 @@ message timeline and portable capture files.
 - Automatic The Things Stack and ChirpStack LoRaWAN uplink inspection
 - LoRaWAN device, frame, frequency, data-rate, RSSI, and SNR summaries
 - Embedded LoRaWAN Base64 frame decoding and lossless raw-frame downloads
+- Guided The Things Stack and ChirpStack MQTT downlink builder
 - Session statistics and binary-safe Base64 capture storage
 - Trim captures by direction, topic or payload, and time range before export
 - Export sanitized MQTTape capture files without passwords or local TLS paths
@@ -66,9 +67,15 @@ data, and the embedded binary frame.
 Typical uplink subscriptions include `v3/<application-id>/devices/+/up` for The
 Things Stack and `application/<application-id>/device/+/event/up` for ChirpStack.
 Broker hostnames, credentials, tenant suffixes, and topic structures can vary by
-deployment, so use the values supplied by the network operator. Downlinks can be
-sent through MQTTape's standard publish composer when you provide the exact topic
-and JSON schema required by the LoRaWAN platform.
+deployment, so use the values supplied by the network operator.
+
+The guided downlink builder follows the default MQTT formats documented by
+[The Things Stack](https://www.thethingsindustries.com/docs/integrations/other-integrations/mqtt/)
+and [ChirpStack](https://www.chirpstack.io/docs/chirpstack/integrations/mqtt.html).
+It accepts UTF-8 text, Hex bytes, Base64, or decoded JSON, generates the platform
+topic and JSON envelope, and shows both before publishing. Downlink commands are
+always published as non-retained MQTT messages. Custom server topic templates can
+still be sent with MQTTape's standard publish composer.
 
 Web Lite is published at <https://nickyclin.github.io/MQTTape/>. Because GitHub
 Pages uses HTTPS, remote brokers must normally expose a trusted `wss://` endpoint;
