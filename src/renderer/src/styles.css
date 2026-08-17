@@ -138,6 +138,26 @@ a:focus-visible {
 .github-link:hover { color: var(--text); }
 
 .header-actions { justify-self: end; display: flex; align-items: center; gap: 14px; }
+.update-control {
+  height: 30px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 9px;
+  color: var(--muted);
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  background: rgba(18, 25, 33, 0.9);
+  font-size: 10px;
+  font-weight: 650;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.update-control svg { width: 13px; height: 13px; }
+.update-control:hover:not(:disabled) { color: var(--text); border-color: #435365; }
+.update-control.downloaded { color: #17130d; border-color: var(--accent); background: var(--accent); }
+.update-control.error { color: #ffb8bc; border-color: rgba(255, 107, 115, 0.3); }
+.update-control:disabled { opacity: 0.72; }
 .language-switcher { display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: 10px; font-weight: 600; }
 .language-switcher select {
   width: auto;
@@ -679,6 +699,8 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 
 @media (max-width: 620px) {
   .app-header { padding: 0 14px; }
+  .update-control { width: 30px; justify-content: center; padding: 0; }
+  .update-control span,
   .language-switcher > span,
   .github-link { display: none; }
   .language-switcher select { min-width: 92px; }

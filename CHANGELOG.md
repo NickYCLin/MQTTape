@@ -4,6 +4,11 @@ All notable changes to MQTTape are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Background update checks, downloads, progress, and restart-to-install controls for supported desktop packages.
+- GitHub Release metadata and differential-update artifacts for `electron-updater`.
+
 ## [0.7.0] - 2026-08-17
 
 ### Added

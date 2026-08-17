@@ -1,4 +1,5 @@
 import { app, BrowserWindow, dialog, ipcMain, safeStorage, session, shell } from 'electron'
+import { existsSync, readFileSync } from 'node:fs'
 import { writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import type {
@@ -11,8 +12,11 @@ import type {
 } from '../shared/contracts'
 import { MqttService } from './mqtt-service'
 import { ProfileStore } from './profile-store'
+import { UpdateService } from './update-service'
+import { resolveUpdateSupport } from './update-support'
 
 let mainWindow: BrowserWindow | null = null
+let updateService: UpdateService | null = null
 
 const mqttService = new MqttService(
   (status) => mainWindow?.webContents.send('mqttape:status', status),
@@ -31,7 +35,7 @@ async function assertTrustedTlsPaths(
   }
 }
 
-function registerIpcHandlers(profileStore: ProfileStore): void {
+function registerIpcHandlers(profileStore: ProfileStore, updater: UpdateService): void {
   ipcMain.handle('mqttape:connect', async (_event, config: ConnectionConfig) => {
     await assertTrustedTlsPaths(config, profileStore)
     return mqttService.connect(config)
@@ -86,6 +90,20 @@ function registerIpcHandlers(profileStore: ProfileStore): void {
     selectedTlsFiles.add(path)
     return path
   })
+  ipcMain.handle('mqttape:get-update-status', () => updater.getStatus())
+  ipcMain.handle('mqttape:check-for-updates', () => updater.checkForUpdates())
+  ipcMain.handle('mqttape:install-update', () => updater.installUpdate())
+}
+
+function readLinuxPackageType(): string | undefined {
+  if (process.platform !== 'linux') return undefined
+  const packageTypePath = join(process.resourcesPath, 'package-type')
+  if (!existsSync(packageTypePath)) return undefined
+  try {
+    return readFileSync(packageTypePath, 'utf8').trim()
+  } catch {
+    return undefined
+  }
 }
 
 function createWindow(): void {
@@ -143,8 +161,20 @@ if (!hasSingleInstanceLock) {
       encrypt: (value) => safeStorage.encryptString(value),
       decrypt: (value) => safeStorage.decryptString(value)
     })
-    registerIpcHandlers(profileStore)
+    updateService = new UpdateService(
+      app.getVersion(),
+      resolveUpdateSupport({
+        isPackaged: app.isPackaged,
+        platform: process.platform,
+        portableExecutableDirectory: process.env.PORTABLE_EXECUTABLE_DIR,
+        appImagePath: process.env.APPIMAGE,
+        linuxPackageType: readLinuxPackageType()
+      }),
+      (status) => mainWindow?.webContents.send('mqttape:update-status', status)
+    )
+    registerIpcHandlers(profileStore, updateService)
     createWindow()
+    updateService.start()
 
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow()
@@ -156,3 +186,5 @@ app.on('window-all-closed', () => {
   void mqttService.disconnect()
   if (process.platform !== 'darwin') app.quit()
 })
+
+app.on('before-quit', () => updateService?.dispose())

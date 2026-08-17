@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type {
+  AppUpdateStatus,
   BrokerProfile,
   CaptureFile,
   ConnectionConfig,
@@ -25,6 +26,11 @@ const bridge: MqttapeBridge = {
   deleteProfile: (id: string): Promise<void> => ipcRenderer.invoke('mqttape:delete-profile', id),
   selectTlsFile: (kind: TlsFileKind): Promise<string | null> =>
     ipcRenderer.invoke('mqttape:select-tls-file', kind),
+  getUpdateStatus: (): Promise<AppUpdateStatus> =>
+    ipcRenderer.invoke('mqttape:get-update-status'),
+  checkForUpdates: (): Promise<AppUpdateStatus> =>
+    ipcRenderer.invoke('mqttape:check-for-updates'),
+  installUpdate: (): Promise<boolean> => ipcRenderer.invoke('mqttape:install-update'),
   onStatus: (listener: (event: StatusEvent) => void) => {
     const wrapped = (_event: Electron.IpcRendererEvent, status: StatusEvent): void => listener(status)
     ipcRenderer.on('mqttape:status', wrapped)
@@ -35,6 +41,12 @@ const bridge: MqttapeBridge = {
       listener(message)
     ipcRenderer.on('mqttape:message', wrapped)
     return () => ipcRenderer.removeListener('mqttape:message', wrapped)
+  },
+  onUpdateStatus: (listener: (status: AppUpdateStatus) => void) => {
+    const wrapped = (_event: Electron.IpcRendererEvent, status: AppUpdateStatus): void =>
+      listener(status)
+    ipcRenderer.on('mqttape:update-status', wrapped)
+    return () => ipcRenderer.removeListener('mqttape:update-status', wrapped)
   }
 }
 

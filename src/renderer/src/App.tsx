@@ -16,6 +16,7 @@ import { PublishComposer } from './components/PublishComposer'
 import { ReplayDialog } from './components/ReplayDialog'
 import { SubscriptionPanel } from './components/SubscriptionPanel'
 import { TopicExplorer } from './components/TopicExplorer'
+import { UpdateControl } from './components/UpdateControl'
 import { useMqttSession } from './hooks/use-mqtt-session'
 import { filterMessages, formatBytes } from '../../shared/message'
 import type { CaptureFile, ConnectionState } from '../../shared/contracts'
@@ -101,6 +102,7 @@ export default function App() {
           </div>
         </div>
         <div className="header-actions">
+          <UpdateControl />
           <label className="language-switcher">
             <span>{t('language.label')}</span>
             <select

@@ -47,6 +47,8 @@ jobs:
             release/*.zip
             release/*.AppImage
             release/*.deb
+            release/latest*.yml
+            release/*.blockmap
           if-no-files-found: error
 
   publish:
@@ -70,6 +72,10 @@ jobs:
           RELEASE_NOTES: |
             MQTTape releases include the latest inspected source, cross-platform
             desktop packages, and a SHA-256 checksum manifest.
+
+            Installed Windows builds and supported Linux packages can download
+            future updates in the background. The Windows portable build and
+            unsigned macOS builds continue to use manual downloads.
 
             Windows and macOS packages are unsigned. Review the repository and
             checksum file before bypassing SmartScreen or Gatekeeper warnings.
