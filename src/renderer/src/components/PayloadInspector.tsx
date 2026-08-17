@@ -14,11 +14,15 @@ import {
 } from '../../../shared/message'
 import { inspectCborPayload, isCborContentType } from '../../../shared/cbor'
 import { countMqttMessageProperties } from '../../../shared/mqtt-properties'
+import { isProtobufContentType } from '../../../shared/protobuf'
+import { inspectSparkplugPayload } from '../../../shared/sparkplug'
 import { DownloadIcon } from './icons'
 import { PayloadTree } from './PayloadTree'
+import { ProtobufInspector } from './ProtobufInspector'
+import { SparkplugInspector } from './SparkplugInspector'
 import { useI18n } from '../i18n'
 
-type PayloadViewMode = 'lorawan' | 'cbor' | 'text' | 'json' | 'hex'
+type PayloadViewMode = 'lorawan' | 'sparkplug' | 'cbor' | 'protobuf' | 'text' | 'json' | 'hex'
 const MAX_PREVIEW_BYTES = 256 * 1024
 
 interface PayloadInspectorProps {
@@ -28,10 +32,14 @@ interface PayloadInspectorProps {
 function initialMode(
   kind: PayloadKind,
   hasLoRaWanInspection: boolean,
-  hasCborInspection: boolean
+  hasSparkplugInspection: boolean,
+  hasCborInspection: boolean,
+  explicitProtobuf: boolean
 ): PayloadViewMode {
   if (hasLoRaWanInspection) return 'lorawan'
+  if (hasSparkplugInspection) return 'sparkplug'
   if (hasCborInspection) return 'cbor'
+  if (explicitProtobuf) return 'protobuf'
   if (kind === 'json') return 'json'
   if (kind === 'binary') return 'hex'
   return 'text'
@@ -316,9 +324,21 @@ export function PayloadInspector({ message }: PayloadInspectorProps) {
       : inspectCborPayload('', undefined),
     [kind, message.payloadBase64, message.properties?.contentType]
   )
+  const sparkplugInspection = useMemo(
+    () => inspectSparkplugPayload(message.topic, message.payloadBase64),
+    [message.payloadBase64, message.topic]
+  )
   const hasCborInspection = cborInspection.status !== 'not-detected'
+  const explicitProtobuf = isProtobufContentType(message.properties?.contentType)
+  const hasProtobufView = kind === 'binary' || explicitProtobuf
   const [mode, setMode] = useState<PayloadViewMode>(
-    () => initialMode(kind, loRaWanInspection !== null, hasCborInspection)
+    () => initialMode(
+      kind,
+      loRaWanInspection !== null,
+      sparkplugInspection !== null,
+      hasCborInspection,
+      explicitProtobuf
+    )
   )
   const payloadBytes = decodePayloadBytes(message.payloadBase64)
   const previewTruncated = payloadBytes.byteLength > MAX_PREVIEW_BYTES
@@ -367,6 +387,28 @@ export function PayloadInspector({ message }: PayloadInspectorProps) {
               CBOR
             </button>
           )}
+          {sparkplugInspection && (
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mode === 'sparkplug'}
+              className={mode === 'sparkplug' ? 'active' : ''}
+              onClick={() => setMode('sparkplug')}
+            >
+              Sparkplug B
+            </button>
+          )}
+          {hasProtobufView && (
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mode === 'protobuf'}
+              className={mode === 'protobuf' ? 'active' : ''}
+              onClick={() => setMode('protobuf')}
+            >
+              Protobuf
+            </button>
+          )}
           <button
             type="button"
             role="tab"
@@ -407,6 +449,15 @@ export function PayloadInspector({ message }: PayloadInspectorProps) {
       </div>
       {mode === 'lorawan' && loRaWanInspection
         ? <LoRaWanInspector message={message} inspection={loRaWanInspection} />
+        : mode === 'sparkplug' && sparkplugInspection
+          ? <SparkplugInspector inspection={sparkplugInspection} />
+        : mode === 'protobuf' && hasProtobufView
+          ? (
+              <ProtobufInspector
+                payloadBase64={message.payloadBase64}
+                explicit={explicitProtobuf}
+              />
+            )
         : mode === 'cbor' && hasCborInspection
           ? (
               <div className="structured-payload" role="tabpanel">

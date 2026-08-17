@@ -19,6 +19,8 @@ MQTTape 是一套可在桌面與瀏覽器使用的開源 MQTT 除錯工具。它
 - Retained Value 快照，並能辨識空白 Retained Message Tombstone
 - 自動以文字、格式化 JSON、Hex Offset／ASCII 檢視 Payload
 - 自動辨識或依 MQTT 5 Content Type 解碼 CBOR，並以保留資料型別的樹狀結構檢視
+- 可匯入一個或多個 `.proto` Schema、選擇 Message Type，並以 CSP 安全的樹狀檢視解碼 Protobuf
+- 自動辨識 `spBv1.0` Topic，使用 Eclipse Tahu 官方 Schema 顯示 Sparkplug B Topic 識別資料、Metric 與完整 Payload
 - 偵測二進位 Payload，並可無損下載原始資料
 - 自動辨識 The Things Stack 與 ChirpStack LoRaWAN Uplink
 - 顯示 LoRaWAN 裝置、訊框、頻率、Data Rate、RSSI 與 SNR 摘要
@@ -53,6 +55,7 @@ MQTTape 是一套可在桌面與瀏覽器使用的開源 MQTT 除錯工具。它
 | 儲存連線設定檔 | 秘密會加密 | 不儲存秘密 |
 | 自訂 CA 與 mTLS | 支援 | 不支援 |
 | 應用程式自動更新 | 支援的安裝套件 | 由瀏覽器處理 |
+| CBOR／Protobuf／Sparkplug B Viewer | 支援 | 支援 |
 
 瀏覽器無法開啟任意 TCP Socket，因此 Web Lite 的通訊協定選單只提供 WebSocket Transport。
 
@@ -197,6 +200,20 @@ Retained 面板是刻意設計成「依工作階段產生的快照」，不是 B
 
 結構化預覽最多處理前 256 KB、5,000 個節點、32 層深度及每個集合 200 個子項目。超過限制或解碼失敗時，原本的 Hex 與 Raw 仍可使用，原始 Payload 不會被修改。
 
+### Protobuf Viewer
+
+二進位訊息或 MQTT 5 Content Type 為 `application/protobuf`、`application/x-protobuf`、`application/vnd.google.protobuf`、`+protobuf`／`+proto` 時會提供 Protobuf 頁籤。Protobuf wire data 本身不包含完整 Message Schema，因此 MQTTape 不會猜測資料結構；請匯入最多 16 個彼此相依的 `.proto` 檔案，再選擇實際的 Message Type。
+
+最多可在目前裝置保存 8 組 Schema。Schema 原始碼只會寫入應用程式或瀏覽器的本機儲存空間，不包含 Broker 憑證或擷取的 Payload。解碼器支援 Varint、ZigZag、32／64 位元 Fixed、Float、Double、String、Bytes、Enum、巢狀 Message、Packed Repeated 與 Map；64 位元整數會保留為 BigInt，未知欄位也會列出 Field Number 與 Wire Type，避免靜默遺失診斷線索。
+
+MQTTape 使用 `protobufjs` 解析 Schema 的反射資訊，但以內建的直譯式 wire decoder 處理 Payload，不需要動態產生 JavaScript，因此正式版的 CSP 仍維持 `script-src 'self'`，不開放 `unsafe-eval`。結構化預覽同樣限制在 256 KB、5,000 個欄位與 32 層深度；即使 Schema 不符或解碼失敗，Hex 與 Raw 仍可使用。
+
+### Sparkplug B Viewer
+
+當 Topic 符合 `spBv1.0/<group_id>/<message_type>/<edge_node_id>[/<device_id>]`，且 Message Type 是 `NBIRTH`、`NDEATH`、`NDATA`、`NCMD`、`DBIRTH`、`DDEATH`、`DDATA` 或 `DCMD` 時，MQTTape 會自動開啟 Sparkplug B Viewer。畫面會拆出 Group、Edge Node、Device、Message Type、Sequence、Timestamp 與 UUID，並以表格顯示 Metric Name、Alias、DataType、Value、Historical／Transient／Null 旗標；巢狀 DataSet、Template、Properties 與完整 Payload 仍可在樹狀檢視展開。
+
+內建 Payload Schema 取自 [Eclipse Tahu](https://github.com/eclipse-tahu/tahu/blob/master/sparkplug_b/sparkplug_b.proto)，依 EPL-2.0 使用並保留原始授權標頭，詳細資訊見 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。MQTTape 只負責檢視已收到的 Sparkplug B 訊息，不會替 Broker、Edge Node 或 Primary Host 實作 Sparkplug 狀態機。
+
 ## 安全性
 
 - Electron Renderer 不啟用 Node.js Integration
@@ -210,7 +227,6 @@ Retained 面板是刻意設計成「依工作階段產生的快照」，不是 B
 
 ## Roadmap
 
-- Protobuf 與 Sparkplug B Payload Viewer
 - 同時連線多個 Broker 工作階段
 - Last Will、自訂 WebSocket Header 與進階認證
 - 已簽章安裝程式與更多 CPU 架構
