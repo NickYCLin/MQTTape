@@ -3,6 +3,7 @@ import type { LoRaWanDownlinkHistoryFile } from './lorawan-downlink-history'
 export type MqttProtocol = 'mqtt' | 'mqtts' | 'ws' | 'wss'
 export type MqttQos = 0 | 1 | 2
 export type MqttVersion = 4 | 5
+export type MqttWillPayloadFormat = 'text' | 'hex' | 'base64'
 export type TlsFileKind = 'ca' | 'certificate' | 'key'
 export type ConnectionState =
   | 'disconnected'
@@ -30,6 +31,19 @@ export interface ConnectionConfig {
   clientCertificatePath: string
   clientKeyPath: string
   clientKeyPassphrase: string
+  will?: MqttLastWillConfig
+}
+
+export interface MqttLastWillConfig {
+  enabled: boolean
+  topic: string
+  payload: string
+  payloadFormat: MqttWillPayloadFormat
+  qos: MqttQos
+  retain: boolean
+  willDelayInterval?: number
+  messageExpiryInterval?: number
+  contentType?: string
 }
 
 export interface PublishRequest {
@@ -119,7 +133,7 @@ export interface CaptureFile {
   exportedAt: string
   connection: Omit<
     ConnectionConfig,
-    'password' | 'caPath' | 'clientCertificatePath' | 'clientKeyPath' | 'clientKeyPassphrase'
+    'password' | 'caPath' | 'clientCertificatePath' | 'clientKeyPath' | 'clientKeyPassphrase' | 'will'
   >
   messages: MqttMessageRecord[]
 }

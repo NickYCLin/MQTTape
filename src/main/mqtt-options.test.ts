@@ -5,6 +5,7 @@ import type { IClientOptions } from 'mqtt'
 import { afterEach, describe, expect, it } from 'vitest'
 import type { ConnectionConfig } from '../shared/contracts'
 import { createClientOptions } from './mqtt-service'
+import { defaultMqttLastWill } from '../shared/mqtt-will'
 
 const temporaryDirectories: string[] = []
 
@@ -75,5 +76,33 @@ describe('MQTT client options', () => {
       .rejects.toThrow('Custom TLS files require mqtts or wss.')
     await expect(createClientOptions(config({ clientCertificatePath: 'client.pem' })))
       .rejects.toThrow('Client certificate and private key must be selected together.')
+  })
+
+  it('passes binary Last Will data and MQTT 5 properties to the client', async () => {
+    const options = await createClientOptions(config({
+      will: {
+        ...defaultMqttLastWill(),
+        enabled: true,
+        topic: 'devices/gateway/status',
+        payload: 'DE AD BE EF',
+        payloadFormat: 'hex',
+        qos: 2,
+        retain: true,
+        willDelayInterval: 5,
+        contentType: 'application/octet-stream'
+      }
+    }))
+
+    expect(options.will).toMatchObject({
+      topic: 'devices/gateway/status',
+      qos: 2,
+      retain: true,
+      properties: {
+        payloadFormatIndicator: false,
+        willDelayInterval: 5,
+        contentType: 'application/octet-stream'
+      }
+    })
+    expect(options.will?.payload).toEqual(Buffer.from([0xde, 0xad, 0xbe, 0xef]))
   })
 })

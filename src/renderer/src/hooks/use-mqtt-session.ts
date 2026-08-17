@@ -19,6 +19,7 @@ import {
 import { publishTopicError } from '../../../shared/mqtt-topic'
 import { createReplayPlan, replayDelay, replayTimingScale } from '../../../shared/replay'
 import { updateMqttPacketFlows } from '../../../shared/packet-flow'
+import { defaultMqttLastWill } from '../../../shared/mqtt-will'
 import { MqttController } from '../lib/mqtt-controller'
 
 const MAX_MESSAGES = 5_000
@@ -62,6 +63,7 @@ function captureConnection(config: ConnectionConfig): CaptureFile['connection'] 
   delete safeConfig.clientCertificatePath
   delete safeConfig.clientKeyPath
   delete safeConfig.clientKeyPassphrase
+  delete safeConfig.will
   return safeConfig as CaptureFile['connection']
 }
 
@@ -73,7 +75,8 @@ function webSafeConfig(config: ConnectionConfig): ConnectionConfig {
     caPath: '',
     clientCertificatePath: '',
     clientKeyPath: '',
-    clientKeyPassphrase: ''
+    clientKeyPassphrase: '',
+    ...(config.will ? { will: { ...config.will, payload: '' } } : {})
   }
 }
 
@@ -113,7 +116,8 @@ function defaultConfig(isDesktop: boolean): ConnectionConfig {
     caPath: '',
     clientCertificatePath: '',
     clientKeyPath: '',
-    clientKeyPassphrase: ''
+    clientKeyPassphrase: '',
+    will: defaultMqttLastWill()
   }
 }
 
@@ -230,7 +234,11 @@ export function useMqttSession() {
       return next.sort((left, right) => left.config.name.localeCompare(right.config.name))
     })
     setSelectedProfileId(savedProfile.id)
-    if (window.mqttape && (config.password || config.clientKeyPassphrase) && !savedProfile.secretsStored) {
+    if (
+      window.mqttape &&
+      (config.password || config.clientKeyPassphrase || config.will?.payload) &&
+      !savedProfile.secretsStored
+    ) {
       setError('Profile saved, but secure OS storage is unavailable; secrets were not stored.')
     }
     return true

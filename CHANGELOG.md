@@ -6,6 +6,8 @@ All notable changes to MQTTape are documented in this file.
 
 ### Added
 
+- MQTT Last Will configuration for UTF-8, Hex, and Base64 payloads, QoS, Retain, and MQTT 5 Will Delay, Message Expiry, Content Type, and Payload Format properties.
+- Encrypted desktop-profile storage for Last Will payloads, Web Lite payload omission, and capture-file privacy exclusion.
 - Protobuf schema-bundle import, explicit message-type selection, CSP-safe wire decoding, local schema persistence, unknown-field diagnostics, and type-preserving trees.
 - Automatic Sparkplug B topic recognition with the official Eclipse Tahu Payload schema, topic metadata, Metric summaries, and complete payload trees.
 - CBOR and CBOR Sequence payload inspection with Content-Type detection, guarded heuristic detection, type-preserving trees, and bounded previews.

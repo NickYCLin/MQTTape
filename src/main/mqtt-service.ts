@@ -24,6 +24,7 @@ import {
 } from '../shared/mqtt-properties'
 import { publishTopicError } from '../shared/mqtt-topic'
 import { createMqttPacketEvent } from '../shared/packet-flow'
+import { mqttLastWillOptions } from '../shared/mqtt-will'
 
 type StatusListener = (event: StatusEvent) => void
 type MessageListener = (message: MqttMessageRecord) => void
@@ -42,6 +43,13 @@ export async function createClientOptions(config: ConnectionConfig): Promise<ICl
     connectTimeout: 15_000,
     rejectUnauthorized: config.rejectUnauthorized,
     resubscribe: true
+  }
+  const will = mqttLastWillOptions(config.will, config.mqttVersion)
+  if (will) {
+    options.will = {
+      ...will,
+      payload: Buffer.from(will.payload)
+    }
   }
 
   const secureProtocol = config.protocol === 'mqtts' || config.protocol === 'wss'
@@ -276,6 +284,7 @@ export class MqttService {
     if (!Number.isInteger(config.port) || config.port < 1 || config.port > 65_535) {
       throw new Error('Broker port must be between 1 and 65535.')
     }
+    mqttLastWillOptions(config.will, config.mqttVersion)
   }
 
   private buildUrl(config: ConnectionConfig): string {

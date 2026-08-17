@@ -61,6 +61,8 @@ describe('i18n', () => {
       'zh-TW',
       'MQTT 5 publish properties require an MQTT 5 connection.'
     )).toBe('MQTT 5 發布屬性需要 MQTT 5 連線。')
+    expect(translateKnownMessage('zh-TW', 'Last Will topic is required.'))
+      .toBe('必須輸入 Last Will Topic。')
   })
 
   it('keeps unknown broker errors unchanged', () => {

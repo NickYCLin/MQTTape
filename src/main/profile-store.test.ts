@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import type { ConnectionConfig } from '../shared/contracts'
 import { ProfileStore } from './profile-store'
+import { defaultMqttLastWill } from '../shared/mqtt-will'
 
 const temporaryDirectories: string[] = []
 
@@ -25,7 +26,15 @@ function config(): ConnectionConfig {
     caPath: 'C:/certs/ca.pem',
     clientCertificatePath: 'C:/certs/client.pem',
     clientKeyPath: 'C:/certs/client.key',
-    clientKeyPassphrase: 'key-secret'
+    clientKeyPassphrase: 'key-secret',
+    will: {
+      ...defaultMqttLastWill(),
+      enabled: true,
+      topic: 'devices/gateway/status',
+      payload: 'will-payload-secret',
+      qos: 1,
+      retain: true
+    }
   }
 }
 
@@ -54,8 +63,10 @@ describe('ProfileStore', () => {
     expect(saved.secretsStored).toBe(true)
     expect(rawFile).not.toContain('broker-secret')
     expect(rawFile).not.toContain('key-secret')
+    expect(rawFile).not.toContain('will-payload-secret')
     expect(loaded.config.password).toBe('broker-secret')
     expect(loaded.config.clientKeyPassphrase).toBe('key-secret')
+    expect(loaded.config.will?.payload).toBe('will-payload-secret')
     expect(await store.isTrustedTlsPath('C:/certs/client.key')).toBe(true)
   })
 
@@ -75,6 +86,7 @@ describe('ProfileStore', () => {
     expect(saved.secretsStored).toBe(false)
     expect(rawFile).not.toContain('broker-secret')
     expect(rawFile).not.toContain('key-secret')
+    expect(rawFile).not.toContain('will-payload-secret')
   })
 
   it('removes previously encrypted secrets when they are cleared', async () => {
@@ -91,7 +103,12 @@ describe('ProfileStore', () => {
     const saved = await store.save({ config: config() })
     const cleared = await store.save({
       id: saved.id,
-      config: { ...saved.config, password: '', clientKeyPassphrase: '' }
+      config: {
+        ...saved.config,
+        password: '',
+        clientKeyPassphrase: '',
+        will: saved.config.will ? { ...saved.config.will, payload: '' } : undefined
+      }
     })
     const rawFile = await readFile(filePath, 'utf8')
 

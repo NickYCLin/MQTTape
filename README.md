@@ -14,6 +14,7 @@ MQTTape 是一套可在桌面與瀏覽器使用的開源 MQTT 除錯工具。它
 - 建立、檢視及重播 MQTT 5 Publish Properties，包含 Content Type、Payload Format、Message Expiry、Response Topic、Correlation Data 與可重複的 User Properties
 - 接收時另會顯示 Topic Alias 與 Subscription Identifier；重播時會基於 MQTT 語意安全略過這兩項連線／訂閱中繼資料
 - 支援 Retained Message、Clean Session 與自動重新連線
+- 支援文字、Hex、Base64 MQTT Last Will，以及 MQTT 5 Will Delay、Message Expiry 與 Content Type
 - 可搜尋傳入與傳出訊息的時間軸
 - 依工作階段建立 Topic 階層、流量統計及最新 Payload
 - Retained Value 快照，並能辨識空白 Retained Message Tombstone
@@ -113,6 +114,8 @@ ChirpStack:      application/<application-id>/device/+/event/+
 
 桌面版設定檔會存放在 Electron User Data 目錄。密碼與 Private Key Passphrase 會透過 Electron `safeStorage` 使用作業系統加密；MQTTape 不會退回以純文字儲存秘密。Web Lite 可以保存非敏感的連線設定，但會刻意捨棄密碼與憑證路徑。
 
+啟用 Last Will 時，桌面版也會把 Will Payload 放入同一份作業系統加密資料，而不會以純文字寫入設定檔。Web Lite 只保存 Will 的 Topic、格式、QoS、Retain 與 MQTT 5 屬性，不保存 Will Payload；載入設定檔後需要重新輸入。Will 設定不會寫入 MQTTape 擷取檔。
+
 TLS 檔案必須使用 MQTTape 的檔案選擇器指定。Client Certificate 與 Private Key 必須成對設定，自訂 CA 則可選填。擷取匯出不會包含密碼、Passphrase 或任何本機憑證路徑。
 
 ## 自動更新
@@ -120,6 +123,12 @@ TLS 檔案必須使用 MQTTape 的檔案選擇器指定。Client Certificate 與
 Windows `Setup` 安裝版與支援的 Linux 套件會在啟動後及每六小時檢查 GitHub Releases。更新會在背景下載；準備完成後，可在標題列選擇「重新啟動以更新」。若正常關閉程式，已下載的更新也會在結束時套用。
 
 Windows Portable 執行檔無法安全地自行取代，因此只會連到最新版手動下載頁。未簽章的 macOS Build 在設定程式碼簽章前也維持手動更新。若目前安裝的是導入自動更新之前的版本，需要最後一次手動安裝新版 `Setup`；之後即可直接更新，不必先解除安裝。
+
+## MQTT Last Will
+
+在連線面板的「進階設定」中啟用 Last Will 後，可以設定 Topic、UTF-8／Hex／Base64 Payload、QoS 與 Retain。MQTT 5.0 連線還可設定 Will Delay Interval、Message Expiry Interval 與 Content Type；UTF-8 會自動加入 Payload Format Indicator，Hex／Base64 則標示為二進位。Will Payload 最多 1 MB，Topic 不允許發布用萬用字元。
+
+Last Will 是 Client 在 `CONNECT` 時交給 Broker 的遺囑：只有連線在沒有正常送出 `DISCONNECT` 的情況下中斷，Broker 才會依設定發布。正常按 MQTTape「中斷連線」不會觸發 Will；應用程式崩潰、網路斷線或裝置失去連線才是典型觸發情境。MQTT 5 的 Will Delay 會再延後發布，但 Client 在期限內以可延續的 Session 重新連線時，Broker 可能取消這次 Will，實際行為也受 Broker 支援能力與 Session 設定影響。
 
 ## 開發
 
@@ -228,7 +237,7 @@ MQTTape 使用 `protobufjs` 解析 Schema 的反射資訊，但以內建的直�
 ## Roadmap
 
 - 同時連線多個 Broker 工作階段
-- Last Will、自訂 WebSocket Header 與進階認證
+- 自訂 WebSocket Header 與進階認證
 - 已簽章安裝程式與更多 CPU 架構
 
 ## 參與貢獻
