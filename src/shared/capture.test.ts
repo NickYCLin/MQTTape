@@ -45,6 +45,45 @@ describe('capture validation', () => {
     })).toBe(true)
   })
 
+  it('accepts optional MQTT 5 properties without breaking version 1 captures', () => {
+    const capture = {
+      format: 'mqttape-capture',
+      version: 1,
+      exportedAt: '2026-01-01T00:00:00.000Z',
+      connection: {},
+      messages: [{
+        id: 'mqtt5',
+        direction: 'incoming',
+        topic: 'demo/mqtt5',
+        timestamp: '2026-01-01T00:00:00.000Z',
+        qos: 0,
+        retain: false,
+        duplicate: false,
+        payloadBase64: 'e30=',
+        payloadText: '{}',
+        size: 2,
+        properties: {
+          payloadFormatIndicator: true,
+          messageExpiryInterval: 120,
+          responseTopic: 'demo/replies',
+          correlationDataBase64: '3q2+7w==',
+          userProperties: [{ name: 'source', value: 'test' }],
+          subscriptionIdentifiers: [7],
+          contentType: 'application/json'
+        }
+      }]
+    }
+
+    expect(isCaptureFile(capture)).toBe(true)
+    expect(isCaptureFile({
+      ...capture,
+      messages: [{
+        ...capture.messages[0],
+        properties: { correlationDataBase64: 'not base64!' }
+      }]
+    })).toBe(false)
+  })
+
   it('rejects unknown formats and malformed messages', () => {
     expect(isCaptureFile({ format: 'other', version: 1, messages: [] })).toBe(false)
     expect(isCaptureFile({

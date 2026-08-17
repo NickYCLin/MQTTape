@@ -1,5 +1,6 @@
 import type { CaptureFile, MqttMessageRecord } from './contracts'
 import { decodePayloadBytes, filterMessages } from './message'
+import { isMqttMessageProperties } from './mqtt-properties'
 
 export interface CaptureTrimOptions {
   includeIncoming: boolean
@@ -67,7 +68,8 @@ export function isCaptureFile(value: unknown): value is CaptureFile {
       typeof message.payloadBase64 === 'string' &&
       typeof message.payloadText === 'string' &&
       typeof message.size === 'number' &&
-      message.size >= 0
+      message.size >= 0 &&
+      (message.properties === undefined || isMqttMessageProperties(message.properties))
     )
     if (!validShape) return false
 

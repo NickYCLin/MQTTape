@@ -10,6 +10,7 @@ MQTTape 是一套可在桌面與瀏覽器使用的開源 MQTT 除錯工具。它
 - 桌面版支援 MQTT over TCP、TLS、WebSocket 與 Secure WebSocket
 - Web Lite 支援 `ws://` 與 `wss://` Broker
 - 支援 QoS 0、1、2 的發布與訂閱
+- 檢視 MQTT 5 Publish Properties，包含 Content Type、Payload Format、Message Expiry、Response Topic、Correlation Data、Topic Alias、Subscription Identifier 與可重複的 User Properties
 - 支援 Retained Message、Clean Session 與自動重新連線
 - 可搜尋傳入與傳出訊息的時間軸
 - 依工作階段建立 Topic 階層、流量統計及最新 Payload
@@ -159,7 +160,7 @@ npm run package
 
 ## 擷取格式
 
-擷取檔是版本化 JSON 文件，格式識別碼為 `mqttape-capture`，且永遠不包含連線密碼。Payload 以 Base64 儲存，因此二進位資料也能無損重播。
+擷取檔是版本化 JSON 文件，格式識別碼為 `mqttape-capture`，且永遠不包含連線密碼。Payload 以 Base64 儲存，因此二進位資料也能無損重播；接收到的 MQTT 5 Publish Properties 也會一併保存，其中 Correlation Data 以 Base64 表示。
 
 重播預覽預設只選擇傳出訊息；你可以明確加入傳入訊息，並在發布前查看 Retained Message 數量。重播會維持訊息順序與相對延遲，提供 0.25x 到 4x 速度，且可暫停或取消。每段延遲最多兩秒，完整時序則壓縮在 30 秒內，避免舊擷取檔意外等待數小時。
 
@@ -173,7 +174,7 @@ Retained 面板是刻意設計成「依工作階段產生的快照」，不是 B
 
 ## Payload Inspector
 
-展開時間軸訊息即可檢視原始 Payload 位元組。MQTTape 會把有效 JSON 顯示成格式化 JSON、可列印 UTF-8 顯示成文字、二進位資料顯示成 Offset／ASCII Hex Dump；適用時也可在文字、JSON 與 Hex 間切換比較。
+展開時間軸訊息即可檢視 MQTT 5 Publish Properties 與原始 Payload 位元組。MQTTape 會保留同名且重複出現的 User Properties，並把有效 JSON 顯示成格式化 JSON、可列印 UTF-8 顯示成文字、二進位資料顯示成 Offset／ASCII Hex Dump；適用時也可在文字、JSON 與 Hex 間切換比較。
 
 「Raw」會下載 `payloadBase64` 中儲存的原始位元組，不會重新編碼已解碼文字。為維持介面流暢，大型 Payload 的畫面預覽最多顯示前 256 KB，但原始下載仍保留完整資料。若匯入擷取檔的 Base64 格式錯誤，或解碼後長度與記錄的 Byte Size 不符，MQTTape 會拒絕匯入。
 
@@ -191,7 +192,7 @@ Retained 面板是刻意設計成「依工作階段產生的快照」，不是 B
 ## Roadmap
 
 - CBOR、Protobuf 與 Sparkplug B Payload Viewer
-- MQTT 5 Properties 與 QoS Packet Flow 檢視
+- MQTT 5 Properties 發布／重播與 QoS Packet Flow 檢視
 - 同時連線多個 Broker 工作階段
 - Last Will、自訂 WebSocket Header 與進階認證
 - 已簽章安裝程式與更多 CPU 架構

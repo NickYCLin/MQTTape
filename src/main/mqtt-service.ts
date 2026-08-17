@@ -9,6 +9,10 @@ import type {
   SubscribeRequest
 } from '../shared/contracts'
 import { createMessageId } from '../shared/message'
+import {
+  normalizeMqttPublishProperties,
+  type RawMqttPublishProperties
+} from '../shared/mqtt-properties'
 import { publishTopicError } from '../shared/mqtt-topic'
 
 type StatusListener = (event: StatusEvent) => void
@@ -203,6 +207,7 @@ export class MqttService {
       qos?: MqttQos
       retain?: boolean
       dup?: boolean
+      properties?: RawMqttPublishProperties
     }
 
     return {
@@ -215,7 +220,11 @@ export class MqttService {
       duplicate: publishPacket.dup ?? false,
       payloadBase64: payload.toString('base64'),
       payloadText: payload.toString('utf8'),
-      size: payload.byteLength
+      size: payload.byteLength,
+      properties: normalizeMqttPublishProperties(
+        publishPacket.properties,
+        (bytes) => Buffer.from(bytes).toString('base64')
+      )
     }
   }
 

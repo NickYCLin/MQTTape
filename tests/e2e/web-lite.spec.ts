@@ -1,5 +1,10 @@
 import { readFile } from 'node:fs/promises'
+import { Buffer } from 'node:buffer'
+import { createServer } from 'node:http'
+import type { AddressInfo } from 'node:net'
 import { expect, test } from '@playwright/test'
+import { generate, parser } from 'mqtt-packet'
+import { createWebSocketStream, WebSocketServer } from 'ws'
 import {
   DOWNLINK_HISTORY_STORAGE_KEY,
   type LoRaWanDownlinkHistoryFile
@@ -61,6 +66,87 @@ test('Web Lite starts and persists the selected interface language', async ({ pa
   await page.reload()
   await expect(page.getByLabel('介面語言')).toHaveValue('zh-TW')
   await expect(page.getByRole('heading', { name: '連線' })).toBeVisible()
+})
+
+test('Web Lite inspects MQTT 5 publish properties in both languages', async ({ page }) => {
+  const packetOptions = { protocolVersion: 5 }
+  const server = createServer()
+  const websocketServer = new WebSocketServer({ server, path: '/mqtt' })
+  websocketServer.on('connection', (socket) => {
+    const stream = createWebSocketStream(socket)
+    const packetParser = parser(packetOptions)
+    stream.on('data', (data) => packetParser.parse(data))
+    packetParser.on('packet', (packet) => {
+      if (packet.cmd === 'connect') {
+        stream.write(generate({
+          cmd: 'connack',
+          reasonCode: 0,
+          sessionPresent: false,
+          properties: {}
+        }, packetOptions))
+        return
+      }
+      if (packet.cmd === 'subscribe') {
+        stream.write(generate({
+          cmd: 'suback',
+          messageId: packet.messageId,
+          granted: packet.subscriptions.map(({ qos }) => qos),
+          properties: {}
+        }, packetOptions))
+        stream.write(generate({
+          cmd: 'publish',
+          topic: 'demo/mqtt5',
+          payload: Buffer.from('{"temperature":24.8}'),
+          qos: 0,
+          dup: false,
+          retain: false,
+          properties: {
+            payloadFormatIndicator: true,
+            messageExpiryInterval: 120,
+            responseTopic: 'demo/replies',
+            correlationData: Buffer.from([0xde, 0xad, 0xbe, 0xef]),
+            contentType: 'application/json',
+            subscriptionIdentifier: [7, 12],
+            userProperties: { source: ['gateway', 'e2e'] }
+          }
+        }, packetOptions))
+      }
+    })
+  })
+  await new Promise<void>((resolve, reject) => {
+    server.once('error', reject)
+    server.listen(0, '127.0.0.1', resolve)
+  })
+  const port = (server.address() as AddressInfo).port
+
+  try {
+    await page.goto('/')
+    await page.getByLabel('Protocol').selectOption('ws')
+    await page.getByLabel('Host').fill('127.0.0.1')
+    await page.getByLabel('Port').fill(String(port))
+    await page.getByRole('button', { name: 'Connect' }).click()
+    await expect(page.getByRole('button', { name: 'Disconnect' })).toBeVisible()
+
+    await page.getByLabel('Subscription topic').fill('demo/mqtt5')
+    await page.getByRole('button', { name: 'Add' }).click()
+    const message = page.getByRole('button', { name: /demo\/mqtt5.*MQTT 5/ })
+    await expect(message).toBeVisible()
+    await message.click()
+
+    await expect(page.getByRole('heading', { name: 'Publish properties' })).toBeVisible()
+    await expect(page.getByText('application/json', { exact: true })).toBeVisible()
+    await expect(page.getByText('3q2+7w==', { exact: true })).toBeVisible()
+    await expect(page.getByRole('cell', { name: 'gateway', exact: true })).toBeVisible()
+    await expect(page.getByRole('cell', { name: 'e2e', exact: true })).toBeVisible()
+
+    await page.getByLabel('Interface language').selectOption('zh-TW')
+    await expect(page.getByRole('heading', { name: '發布屬性' })).toBeVisible()
+    await expect(page.getByText('關聯資料（4 位元組）', { exact: true })).toBeVisible()
+  } finally {
+    websocketServer.clients.forEach((client) => client.terminate())
+    await new Promise<void>((resolve) => websocketServer.close(() => resolve()))
+    await new Promise<void>((resolve) => server.close(() => resolve()))
+  }
 })
 
 test('Downlink history survives reload, exports safely, and can be cleared', async ({ page }) => {
