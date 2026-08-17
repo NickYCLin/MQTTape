@@ -32,3 +32,16 @@ jobs:
         run: npm run build
       - name: Build Web Lite
         run: npm run build:web
+      - name: Install Chromium for UI smoke tests
+        run: npx playwright install --with-deps chromium
+      - name: Run UI smoke tests
+        run: xvfb-run -a npm run test:e2e:ci
+      - name: Upload UI test diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ui-test-diagnostics
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
