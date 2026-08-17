@@ -605,6 +605,9 @@ input[type='checkbox'] {
 }
 
 .theme-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   padding: 9px 8px 3px;
   color: var(--text-3);
   font-size: 11px;

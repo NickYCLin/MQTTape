@@ -3,12 +3,12 @@ import { ConnectionPanel } from './components/ConnectionPanel'
 import {
   DownloadIcon,
   GithubIcon,
+  PlayIcon,
   SearchIcon,
   TapeIcon,
   TimelineIcon,
   TopicTreeIcon,
   TrashIcon,
-  UploadIcon,
   XIcon
 } from './components/icons'
 import { CaptureExportDialog } from './components/CaptureExportDialog'
@@ -246,7 +246,7 @@ export default function App() {
                   disabled={!connected || session.busy}
                   onClick={() => captureInputRef.current?.click()}
                 >
-                  <UploadIcon width={16} height={16} />
+                  <PlayIcon width={16} height={16} />
                   <span>{t('session.replay')}</span>
                 </button>
                 <input

@@ -5,7 +5,7 @@ import type {
   MqttProtocol,
   TlsFileKind
 } from '../../../shared/contracts'
-import { PlugIcon } from './icons'
+import { PlugIcon, PowerIcon } from './icons'
 import { useI18n } from '../i18n'
 
 interface ConnectionPanelProps {
@@ -306,7 +306,7 @@ export function ConnectionPanel({
           disabled={busy}
           onClick={connected ? onDisconnect : undefined}
         >
-          <PlugIcon width={16} height={16} />
+          {connected ? <PowerIcon width={16} height={16} /> : <PlugIcon width={16} height={16} />}
           {t(connecting ? 'connection.connecting' : connected ? 'connection.disconnect' : 'connection.connect')}
         </button>
       </div>

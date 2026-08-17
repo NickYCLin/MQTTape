@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import type { MqttQos } from '../../../shared/contracts'
-import { SendIcon, SlidersIcon } from './icons'
+import { DownlinkIcon, SendIcon } from './icons'
 import { useI18n } from '../i18n'
 import { LoRaWanDownlinkDialog } from './LoRaWanDownlinkDialog'
 
@@ -29,7 +29,7 @@ export function PublishComposer({ connected, onPublish }: PublishComposerProps) 
           <h2>{t('publish.eyebrow')}</h2>
           <div className="publish-options">
             <button className="btn plain sm" type="button" onClick={() => setShowLoRaWanDownlink(true)}>
-              <SlidersIcon width={14} height={14} />
+              <DownlinkIcon width={14} height={14} />
               {t('publish.lorawanDownlink')}
             </button>
             <select

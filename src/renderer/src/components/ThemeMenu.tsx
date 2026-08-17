@@ -7,7 +7,7 @@ import {
   type ThemePreference
 } from '../lib/theme'
 import { useTheme } from '../theme'
-import { CheckIcon, PaletteIcon } from './icons'
+import { CheckIcon, MoonIcon, PaletteIcon, SunIcon } from './icons'
 
 const schemeOrder: ColorScheme[] = ['dark', 'light']
 
@@ -78,7 +78,12 @@ export function ThemeMenu() {
 
           {schemeOrder.map((scheme) => (
             <Fragment key={scheme}>
-              <p className="theme-group">{t(scheme === 'dark' ? 'theme.dark' : 'theme.light')}</p>
+              <p className="theme-group">
+                {scheme === 'dark'
+                  ? <MoonIcon width={13} height={13} />
+                  : <SunIcon width={13} height={13} />}
+                {t(scheme === 'dark' ? 'theme.dark' : 'theme.light')}
+              </p>
               {themeCatalog
                 .filter((entry) => entry.scheme === scheme)
                 .map((entry) => (
