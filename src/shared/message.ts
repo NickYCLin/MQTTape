@@ -57,7 +57,8 @@ export function detectPayloadKind(base64: string): PayloadKind {
 export function formatHexDump(
   base64: string,
   bytesPerRow = 16,
-  maxBytes = Number.POSITIVE_INFINITY
+  maxBytes = Number.POSITIVE_INFINITY,
+  formatOverflow = (count: number): string => `… ${count} additional byte(s) not shown`
 ): string {
   const bytes = decodePayloadBytes(base64)
   if (bytes.byteLength === 0) return ''
@@ -85,7 +86,7 @@ export function formatHexDump(
   }
 
   if (visibleBytes.byteLength < bytes.byteLength) {
-    rows.push(`… ${bytes.byteLength - visibleBytes.byteLength} additional byte(s) not shown`)
+    rows.push(formatOverflow(bytes.byteLength - visibleBytes.byteLength))
   }
 
   return rows.join('\n')

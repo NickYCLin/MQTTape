@@ -90,7 +90,7 @@ function readWebProfiles(): BrokerProfile[] {
 
 function defaultConfig(isDesktop: boolean): ConnectionConfig {
   return {
-    name: 'Local broker',
+    name: '',
     protocol: isDesktop ? 'mqtt' : 'wss',
     host: '',
     port: isDesktop ? 1883 : 8084,

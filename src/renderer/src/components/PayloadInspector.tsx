@@ -9,6 +9,7 @@ import {
   type PayloadKind
 } from '../../../shared/message'
 import { DownloadIcon } from './icons'
+import { useI18n } from '../i18n'
 
 type PayloadViewMode = 'text' | 'json' | 'hex'
 const MAX_PREVIEW_BYTES = 256 * 1024
@@ -33,6 +34,7 @@ function payloadFilename(message: MqttMessageRecord, kind: PayloadKind): string 
 }
 
 export function PayloadInspector({ message }: PayloadInspectorProps) {
+  const { t, formatNumber } = useI18n()
   const kind = detectPayloadKind(message.payloadBase64)
   const [mode, setMode] = useState<PayloadViewMode>(() => initialMode(kind))
   const payloadBytes = decodePayloadBytes(message.payloadBase64)
@@ -41,7 +43,12 @@ export function PayloadInspector({ message }: PayloadInspectorProps) {
     ? new TextDecoder().decode(payloadBytes.subarray(0, MAX_PREVIEW_BYTES))
     : decodePayload(message.payloadBase64)
   const content = mode === 'hex'
-    ? formatHexDump(message.payloadBase64, 16, MAX_PREVIEW_BYTES)
+    ? formatHexDump(
+        message.payloadBase64,
+        16,
+        MAX_PREVIEW_BYTES,
+        (count) => t('payload.additionalBytes', { count: formatNumber(count) })
+      )
     : mode === 'json'
       ? prettyPayload(decodedText)
       : decodedText
@@ -62,7 +69,7 @@ export function PayloadInspector({ message }: PayloadInspectorProps) {
   return (
     <div className="payload-inspector">
       <div className="payload-inspector-toolbar">
-        <div className="payload-view-tabs" role="tablist" aria-label="Payload view">
+        <div className="payload-view-tabs" role="tablist" aria-label={t('payload.view')}>
           <button
             type="button"
             role="tab"
@@ -70,7 +77,7 @@ export function PayloadInspector({ message }: PayloadInspectorProps) {
             className={mode === 'text' ? 'active' : ''}
             onClick={() => setMode('text')}
           >
-            Text
+            {t('payload.text')}
           </button>
           <button
             type="button"
@@ -78,7 +85,7 @@ export function PayloadInspector({ message }: PayloadInspectorProps) {
             aria-selected={mode === 'json'}
             className={mode === 'json' ? 'active' : ''}
             disabled={kind !== 'json'}
-            title={kind === 'json' ? 'Formatted JSON' : 'Payload is not valid JSON'}
+            title={t(kind === 'json' ? 'payload.formattedJson' : 'payload.invalidJson')}
             onClick={() => setMode('json')}
           >
             JSON
@@ -90,29 +97,29 @@ export function PayloadInspector({ message }: PayloadInspectorProps) {
             className={mode === 'hex' ? 'active' : ''}
             onClick={() => setMode('hex')}
           >
-            Hex
+            {t('payload.hex')}
           </button>
         </div>
         <div className="payload-inspector-actions">
-          <span className={`payload-kind ${kind}`}>{kind}</span>
+          <span className={`payload-kind ${kind}`}>{t(`payload.kind.${kind}`)}</span>
           <button type="button" onClick={download}>
             <DownloadIcon width={14} height={14} />
-            Raw
+            {t('payload.raw')}
           </button>
         </div>
       </div>
       {kind === 'binary' && mode === 'text' && (
         <p className="payload-inspector-note">
-          This payload is not valid printable UTF-8; replacement characters may appear below.
+          {t('payload.binaryWarning')}
         </p>
       )}
       {previewTruncated && mode !== 'hex' && (
         <p className="payload-inspector-note">
-          Preview limited to the first 256 KB. Raw downloads the complete payload.
+          {t('payload.previewLimit')}
         </p>
       )}
       <pre className={mode === 'hex' ? 'hex-dump' : ''} role="tabpanel">
-        {content || '(empty payload)'}
+        {content || t('common.emptyPayload')}
       </pre>
     </div>
   )

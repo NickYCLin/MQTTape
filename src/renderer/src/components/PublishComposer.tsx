@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import type { MqttQos } from '../../../shared/contracts'
 import { SendIcon } from './icons'
+import { useI18n } from '../i18n'
 
 interface PublishComposerProps {
   connected: boolean
@@ -8,6 +9,7 @@ interface PublishComposerProps {
 }
 
 export function PublishComposer({ connected, onPublish }: PublishComposerProps) {
+  const { t } = useI18n()
   const [topic, setTopic] = useState('')
   const [payload, setPayload] = useState('')
   const [qos, setQos] = useState<MqttQos>(0)
@@ -21,10 +23,10 @@ export function PublishComposer({ connected, onPublish }: PublishComposerProps) 
   return (
     <form className="publish-composer" onSubmit={submit}>
       <div className="publish-heading">
-        <span className="eyebrow">PUBLISH</span>
+        <span className="eyebrow">{t('publish.eyebrow')}</span>
         <div className="publish-options">
           <select
-            aria-label="Publish QoS"
+            aria-label={t('publish.qos')}
             value={qos}
             disabled={!connected}
             onChange={(event) => setQos(Number(event.target.value) as MqttQos)}
@@ -40,30 +42,30 @@ export function PublishComposer({ connected, onPublish }: PublishComposerProps) 
               disabled={!connected}
               onChange={(event) => setRetain(event.target.checked)}
             />
-            Retain
+            {t('publish.retain')}
           </label>
         </div>
       </div>
       <div className="publish-body">
         <input
-          aria-label="Publish topic"
+          aria-label={t('publish.topic')}
           value={topic}
           disabled={!connected}
-          placeholder="Topic, e.g. devices/lamp/set"
+          placeholder={t('publish.topicPlaceholder')}
           spellCheck={false}
           onChange={(event) => setTopic(event.target.value)}
         />
         <textarea
-          aria-label="Publish payload"
+          aria-label={t('publish.payload')}
           value={payload}
           disabled={!connected}
-          placeholder={'Payload — text or JSON\n{ "state": "on" }'}
+          placeholder={t('publish.payloadPlaceholder')}
           spellCheck={false}
           onChange={(event) => setPayload(event.target.value)}
         />
         <button type="submit" disabled={!connected || !topic.trim()}>
           <SendIcon />
-          Publish
+          {t('publish.action')}
         </button>
       </div>
     </form>

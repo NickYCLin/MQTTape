@@ -4,6 +4,10 @@ All notable changes to MQTTape are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Runtime interface switching between English and Traditional Chinese with a persisted local preference.
+
 ## [0.6.0] - 2026-08-17
 
 ### Added

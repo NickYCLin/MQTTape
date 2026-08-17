@@ -20,17 +20,20 @@ import { useMqttSession } from './hooks/use-mqtt-session'
 import { filterMessages, formatBytes } from '../../shared/message'
 import type { CaptureFile, ConnectionState } from '../../shared/contracts'
 import { isCaptureFile } from '../../shared/capture'
+import { useI18n } from './i18n'
+import type { TranslationKey } from './lib/i18n'
 
-const statusLabels: Record<ConnectionState, string> = {
-  disconnected: 'Disconnected',
-  connecting: 'Connecting',
-  connected: 'Connected',
-  reconnecting: 'Reconnecting',
-  offline: 'Offline',
-  error: 'Connection error'
+const statusLabelKeys: Record<ConnectionState, TranslationKey> = {
+  disconnected: 'status.disconnected',
+  connecting: 'status.connecting',
+  connected: 'status.connected',
+  reconnecting: 'status.reconnecting',
+  offline: 'status.offline',
+  error: 'status.error'
 }
 
 export default function App() {
+  const { language, setLanguage, t, translateMessage, formatNumber } = useI18n()
   const session = useMqttSession()
   const [query, setQuery] = useState('')
   const [activeView, setActiveView] = useState<'timeline' | 'topics'>('timeline')
@@ -87,25 +90,38 @@ export default function App() {
           <div className="brand-mark"><TapeIcon width={25} height={25} /></div>
           <div>
             <h1>MQTTape</h1>
-            <p>Capture · Inspect · Replay</p>
+            <p>{t('app.tagline')}</p>
           </div>
         </div>
         <div className="header-status">
           <span className={`status-dot ${session.status.state}`} />
           <div>
-            <strong>{statusLabels[session.status.state]}</strong>
-            <span>{session.status.detail || (session.isDesktop ? 'Desktop Full' : 'WebSocket Lite')}</span>
+            <strong>{t(statusLabelKeys[session.status.state])}</strong>
+            <span>{session.status.detail || t(session.isDesktop ? 'mode.desktopFull' : 'mode.webSocketLite')}</span>
           </div>
         </div>
-        <a
-          className="github-link"
-          href="https://github.com/NickYCLin/MQTTape"
-          target="_blank"
-          rel="noreferrer"
-        >
-          GitHub
-          <span aria-hidden="true">↗</span>
-        </a>
+        <div className="header-actions">
+          <label className="language-switcher">
+            <span>{t('language.label')}</span>
+            <select
+              aria-label={t('language.label')}
+              value={language}
+              onChange={(event) => setLanguage(event.target.value as 'en' | 'zh-TW')}
+            >
+              <option value="en">{t('language.english')}</option>
+              <option value="zh-TW">{t('language.traditionalChinese')}</option>
+            </select>
+          </label>
+          <a
+            className="github-link"
+            href="https://github.com/NickYCLin/MQTTape"
+            target="_blank"
+            rel="noreferrer"
+          >
+            {t('app.github')}
+            <span aria-hidden="true">↗</span>
+          </a>
+        </div>
       </header>
 
       <div className="workspace">
@@ -135,37 +151,37 @@ export default function App() {
         </aside>
 
         <main className="main-stage">
-          <section className="stats-row" aria-label="Session statistics">
+          <section className="stats-row" aria-label={t('stats.label')}>
             <div className="stat-card">
-              <span>Incoming</span>
-              <strong>{session.stats.incoming.toLocaleString()}</strong>
-              <small>messages</small>
+              <span>{t('common.incoming')}</span>
+              <strong>{formatNumber(session.stats.incoming)}</strong>
+              <small>{t('stats.messages')}</small>
             </div>
             <div className="stat-card">
-              <span>Outgoing</span>
-              <strong>{session.stats.outgoing.toLocaleString()}</strong>
-              <small>messages</small>
+              <span>{t('common.outgoing')}</span>
+              <strong>{formatNumber(session.stats.outgoing)}</strong>
+              <small>{t('stats.messages')}</small>
             </div>
             <div className="stat-card">
-              <span>Captured</span>
+              <span>{t('stats.captured')}</span>
               <strong>{formatBytes(session.stats.bytes)}</strong>
-              <small>in this session</small>
+              <small>{t('stats.inSession')}</small>
             </div>
             <div className="stat-card capture-state">
-              <span>Recorder</span>
-              <strong><i className={connected ? 'recording' : ''} />{connected ? 'Live' : 'Ready'}</strong>
-              <small>up to 5,000 messages</small>
+              <span>{t('stats.recorder')}</span>
+              <strong><i className={connected ? 'recording' : ''} />{t(connected ? 'stats.live' : 'stats.ready')}</strong>
+              <small>{t('stats.limit')}</small>
             </div>
           </section>
 
           <section className="timeline-panel">
             <div className="timeline-toolbar">
               <div>
-                <span className="eyebrow">{activeView === 'timeline' ? 'LIVE SESSION' : 'TOPIC EXPLORER'}</span>
-                <h2>{activeView === 'timeline' ? 'Message timeline' : 'Topic tree & retained values'}</h2>
+                <span className="eyebrow">{t(activeView === 'timeline' ? 'session.live' : 'session.topicExplorer')}</span>
+                <h2>{t(activeView === 'timeline' ? 'session.timeline' : 'session.topicTree')}</h2>
               </div>
               <div className="toolbar-actions">
-                <div className="view-switcher" aria-label="Session view">
+                <div className="view-switcher" aria-label={t('session.view')}>
                   <button
                     className={activeView === 'timeline' ? 'active' : ''}
                     type="button"
@@ -173,7 +189,7 @@ export default function App() {
                     onClick={() => setActiveView('timeline')}
                   >
                     <TimelineIcon />
-                    Timeline
+                    {t('session.timelineTab')}
                   </button>
                   <button
                     className={activeView === 'topics' ? 'active' : ''}
@@ -182,19 +198,19 @@ export default function App() {
                     onClick={() => setActiveView('topics')}
                   >
                     <TopicTreeIcon />
-                    Topics
+                    {t('session.topicsTab')}
                   </button>
                 </div>
                 <label className="search-box">
                   <SearchIcon />
                   <input
                     value={query}
-                    placeholder={activeView === 'timeline' ? 'Filter topic or payload' : 'Find observed topics'}
-                    aria-label={activeView === 'timeline' ? 'Filter messages' : 'Filter topics'}
+                    placeholder={t(activeView === 'timeline' ? 'session.filterMessagesPlaceholder' : 'session.filterTopicsPlaceholder')}
+                    aria-label={t(activeView === 'timeline' ? 'session.filterMessages' : 'session.filterTopics')}
                     onChange={(event) => setQuery(event.target.value)}
                   />
                   {query && (
-                    <button type="button" aria-label="Clear filter" onClick={() => setQuery('')}>
+                    <button type="button" aria-label={t('session.clearFilter')} onClick={() => setQuery('')}>
                       <XIcon width={14} height={14} />
                     </button>
                   )}
@@ -202,8 +218,8 @@ export default function App() {
                 <button
                   className="icon-button"
                   type="button"
-                  title="Clear messages"
-                  aria-label="Clear messages"
+                  title={t('session.clearMessages')}
+                  aria-label={t('session.clearMessages')}
                   disabled={session.messages.length === 0}
                   onClick={session.clearMessages}
                 >
@@ -216,13 +232,14 @@ export default function App() {
                   onClick={() => captureInputRef.current?.click()}
                 >
                   <UploadIcon />
-                  Replay
+                  {t('session.replay')}
                 </button>
                 <input
                   ref={captureInputRef}
                   className="visually-hidden"
                   type="file"
                   accept="application/json,.json"
+                  aria-label={t('session.captureFile')}
                   tabIndex={-1}
                   onChange={importAndReplay}
                 />
@@ -233,14 +250,17 @@ export default function App() {
                   onClick={() => setCaptureToExport(session.makeCapture())}
                 >
                   <DownloadIcon />
-                  Export
+                  {t('session.export')}
                 </button>
               </div>
             </div>
 
             {query && activeView === 'timeline' && (
               <div className="filter-result">
-                Showing {visibleMessages.length} of {session.messages.length} messages
+                {t('session.filterResult', {
+                  visible: formatNumber(visibleMessages.length),
+                  total: formatNumber(session.messages.length)
+                })}
               </div>
             )}
             <div className={`timeline-scroll ${activeView === 'topics' ? 'topic-scroll' : ''}`}>
@@ -266,10 +286,10 @@ export default function App() {
       {session.error && (
         <div className="error-toast" role="alert">
           <div>
-            <strong>MQTT operation failed</strong>
-            <span>{session.error}</span>
+            <strong>{t('error.operationFailed')}</strong>
+            <span>{translateMessage(session.error)}</span>
           </div>
-          <button type="button" aria-label="Dismiss error" onClick={session.clearError}>
+          <button type="button" aria-label={t('error.dismiss')} onClick={session.clearError}>
             <XIcon />
           </button>
         </div>

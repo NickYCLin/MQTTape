@@ -27,6 +27,7 @@ message timeline and portable capture files.
 - Pause, resume, or cancel a replay while preserving recorded ordering
 - Saved broker profiles with encrypted desktop secrets
 - Custom CA and client certificate/key selection for desktop mTLS
+- Switchable English and Traditional Chinese interfaces with a saved local preference
 - Portable Windows build plus installers for Windows, macOS, and Linux
 
 > MQTTape is a client, not a broker. Connect it to Mosquitto, EMQX, HiveMQ, or

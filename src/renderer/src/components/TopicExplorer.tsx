@@ -6,25 +6,12 @@ import {
   filterTopicTree,
   type TopicTreeNode
 } from '../../../shared/topic-tree'
+import { useI18n } from '../i18n'
 
 interface TopicExplorerProps {
   messages: MqttMessageRecord[]
   query: string
   onInspectTopic: (topic: string) => void
-}
-
-function formatTime(timestamp: string): string {
-  return new Intl.DateTimeFormat(undefined, {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false
-  }).format(new Date(timestamp))
-}
-
-function displaySegment(node: TopicTreeNode): string {
-  if (node.segment) return node.segment
-  return node.topic ? '(empty level)' : '(leading slash)'
 }
 
 function TopicBranch({
@@ -34,25 +21,27 @@ function TopicBranch({
   node: TopicTreeNode
   onInspectTopic: (topic: string) => void
 }) {
+  const { t, formatNumber, formatTime } = useI18n()
+  const segment = node.segment || t(node.topic ? 'topics.emptyLevel' : 'topics.leadingSlash')
   return (
     <li className="topic-branch">
       <button
         className="topic-node"
         type="button"
         disabled={!node.topic}
-        title={node.topic || 'Leading slash level'}
+        title={node.topic || t('topics.leadingSlashTitle')}
         onClick={() => onInspectTopic(node.topic)}
       >
-        <span className="topic-segment">{displaySegment(node)}</span>
+        <span className="topic-segment">{segment}</span>
         <span className="topic-direction-counts">
           <i className="incoming-count">{node.incomingCount} IN</i>
           <i className="outgoing-count">{node.outgoingCount} OUT</i>
         </span>
-        {node.retainedMessage && <span className="retained-badge">RETAINED</span>}
-        <strong>{node.totalCount.toLocaleString()}</strong>
+        {node.retainedMessage && <span className="retained-badge">{t('topics.retainedBadge')}</span>}
+        <strong>{formatNumber(node.totalCount)}</strong>
       </button>
       <div className="topic-node-preview">
-        <span>{node.latestMessage.payloadText || '(empty payload)'}</span>
+        <span>{node.latestMessage.payloadText || t('common.emptyPayload')}</span>
         <time>{formatTime(node.latestMessage.timestamp)}</time>
       </div>
       {node.children.length > 0 && (
@@ -67,6 +56,7 @@ function TopicBranch({
 }
 
 export function TopicExplorer({ messages, query, onInspectTopic }: TopicExplorerProps) {
+  const { t, formatNumber, formatTime } = useI18n()
   const tree = useMemo(() => buildTopicTree(messages), [messages])
   const visibleRoots = useMemo(() => filterTopicTree(tree.roots, query), [query, tree.roots])
   const normalizedQuery = query.trim().toLocaleLowerCase()
@@ -81,8 +71,8 @@ export function TopicExplorer({ messages, query, onInspectTopic }: TopicExplorer
     return (
       <div className="timeline-empty">
         <div className="topic-empty-icon" aria-hidden="true">/#</div>
-        <h3>No topics observed yet</h3>
-        <p>Subscribe or publish to build a topic tree from traffic captured in this session.</p>
+        <h3>{t('topics.emptyTitle')}</h3>
+        <p>{t('topics.emptyHelp')}</p>
       </div>
     )
   }
@@ -92,10 +82,10 @@ export function TopicExplorer({ messages, query, onInspectTopic }: TopicExplorer
       <section className="topic-tree-pane" aria-labelledby="topic-tree-title">
         <div className="topic-pane-heading">
           <div>
-            <span className="eyebrow">SESSION-DERIVED</span>
-            <h3 id="topic-tree-title">Observed topics</h3>
+            <span className="eyebrow">{t('topics.sessionDerived')}</span>
+            <h3 id="topic-tree-title">{t('topics.observed')}</h3>
           </div>
-          <span className="counter-badge">{tree.uniqueTopics.toLocaleString()} TOPICS</span>
+          <span className="counter-badge">{t('topics.count', { count: formatNumber(tree.uniqueTopics) })}</span>
         </div>
         {visibleRoots.length > 0 ? (
           <ul className="topic-tree">
@@ -104,20 +94,20 @@ export function TopicExplorer({ messages, query, onInspectTopic }: TopicExplorer
             ))}
           </ul>
         ) : (
-          <div className="topic-pane-empty">No topic or payload matches “{query}”.</div>
+          <div className="topic-pane-empty">{t('topics.noMatch', { query })}</div>
         )}
       </section>
 
       <aside className="retained-pane" aria-labelledby="retained-title">
         <div className="topic-pane-heading">
           <div>
-            <span className="eyebrow">SESSION SNAPSHOT</span>
-            <h3 id="retained-title">Retained values</h3>
+            <span className="eyebrow">{t('topics.snapshot')}</span>
+            <h3 id="retained-title">{t('topics.retainedValues')}</h3>
           </div>
-          <span className="counter-badge">{retainedSnapshots.length.toLocaleString()}</span>
+          <span className="counter-badge">{formatNumber(retainedSnapshots.length)}</span>
         </div>
         <p className="retained-note">
-          Latest retained values observed or published by MQTTape. This is not a broker-wide inventory.
+          {t('topics.retainedHelp')}
         </p>
         <div className="retained-list">
           {retainedSnapshots.map(({ topic, message }) => (
@@ -128,12 +118,12 @@ export function TopicExplorer({ messages, query, onInspectTopic }: TopicExplorer
               onClick={() => onInspectTopic(topic)}
             >
               <strong>{topic}</strong>
-              <span>{message.payloadText || '(empty payload)'}</span>
+              <span>{message.payloadText || t('common.emptyPayload')}</span>
               <small>QoS {message.qos} · {formatBytes(message.size)} · {formatTime(message.timestamp)}</small>
             </button>
           ))}
           {retainedSnapshots.length === 0 && (
-            <div className="retained-empty">No retained values are visible for this session.</div>
+            <div className="retained-empty">{t('topics.noRetained')}</div>
           )}
         </div>
       </aside>
