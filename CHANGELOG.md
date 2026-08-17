@@ -11,6 +11,8 @@ All notable changes to MQTTape are documented in this file.
 - Playwright UI smoke tests for Web Lite language and downlink-history flows plus the Electron preload bridge.
 - MQTT 5 Publish Properties capture and inspection in both the desktop app and Web Lite, including duplicate User Properties and binary Correlation Data.
 - Protocol-specific port guidance that distinguishes registered MQTT TCP ports from common Broker WebSocket defaults.
+- MQTT 5 Publish Properties editor and lossless replay for publish-safe metadata in both the desktop app and Web Lite.
+- MQTT 3.1.1 compatibility guards plus replay omission of connection-scoped Topic Alias and Broker-issued Subscription Identifier metadata.
 
 ## [0.11.0] - 2026-08-17
 

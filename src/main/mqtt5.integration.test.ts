@@ -1,7 +1,7 @@
 import { Buffer } from 'node:buffer'
 import { createServer, type Server } from 'node:net'
 import type { AddressInfo } from 'node:net'
-import { generate, parser, type Packet } from 'mqtt-packet'
+import { generate, parser, type IPublishPacket, type Packet } from 'mqtt-packet'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import type { ConnectionConfig, MqttMessageRecord, StatusEvent } from '../shared/contracts'
 import { MqttService } from './mqtt-service'
@@ -19,6 +19,7 @@ async function waitFor(predicate: () => boolean, timeoutMilliseconds = 4_000): P
 describe('MqttService MQTT 5 integration', () => {
   let server: Server
   let port: number
+  const receivedPublishes: IPublishPacket[] = []
 
   beforeAll(async () => {
     server = createServer((socket) => {
@@ -49,6 +50,7 @@ describe('MqttService MQTT 5 integration', () => {
             }, packetOptions))
             break
           case 'publish':
+            receivedPublishes.push(packet)
             if (packet.qos === 1 && packet.messageId) {
               socket.write(generate({
                 cmd: 'puback',
@@ -101,6 +103,7 @@ describe('MqttService MQTT 5 integration', () => {
   })
 
   it('connects, subscribes, publishes, and receives with MQTT 5 framing', async () => {
+    receivedPublishes.length = 0
     const statuses: StatusEvent[] = []
     const messages: MqttMessageRecord[] = []
     const service = new MqttService(
@@ -133,13 +136,48 @@ describe('MqttService MQTT 5 integration', () => {
       topic: 'mqttape/mqtt5',
       payload: '{"version":5}',
       qos: 1,
-      retain: false
+      retain: false,
+      properties: {
+        payloadFormatIndicator: true,
+        messageExpiryInterval: 60,
+        responseTopic: 'mqttape/client-replies',
+        correlationDataBase64: 'AQIDBA==',
+        contentType: 'application/json',
+        userProperties: [
+          { name: 'source', value: 'mqttape' },
+          { name: 'source', value: 'desktop' }
+        ]
+      }
     })
     await waitFor(() => messages.some((message) => message.direction === 'incoming'))
+    await waitFor(() => receivedPublishes.length > 0)
 
     expect(statuses.some((status) => status.state === 'connected')).toBe(true)
+    expect(receivedPublishes.at(-1)?.properties).toEqual({
+      payloadFormatIndicator: true,
+      messageExpiryInterval: 60,
+      responseTopic: 'mqttape/client-replies',
+      correlationData: Buffer.from([1, 2, 3, 4]),
+      contentType: 'application/json',
+      userProperties: { source: ['mqttape', 'desktop'] }
+    })
     expect(messages).toEqual(expect.arrayContaining([
-      expect.objectContaining({ direction: 'outgoing', qos: 1, payloadText: '{"version":5}' }),
+      expect.objectContaining({
+        direction: 'outgoing',
+        qos: 1,
+        payloadText: '{"version":5}',
+        properties: {
+          payloadFormatIndicator: true,
+          messageExpiryInterval: 60,
+          responseTopic: 'mqttape/client-replies',
+          correlationDataBase64: 'AQIDBA==',
+          contentType: 'application/json',
+          userProperties: [
+            { name: 'source', value: 'mqttape' },
+            { name: 'source', value: 'desktop' }
+          ]
+        }
+      }),
       expect.objectContaining({
         direction: 'incoming',
         qos: 0,

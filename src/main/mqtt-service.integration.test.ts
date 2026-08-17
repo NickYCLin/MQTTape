@@ -157,4 +157,19 @@ describe('MqttService integration', () => {
     await publisher.disconnect()
     await subscriber.disconnect()
   })
+
+  it('blocks MQTT 5 publish properties on an MQTT 3.1.1 connection', async () => {
+    const service = new MqttService(() => undefined, () => undefined)
+    await service.connect(connectionConfig(port, 'mqttape_property_guard'))
+
+    await expect(service.publish({
+      topic: 'mqttape/properties',
+      payload: 'blocked',
+      qos: 0,
+      retain: false,
+      properties: { contentType: 'text/plain' }
+    })).rejects.toThrow('MQTT 5 publish properties require an MQTT 5 connection.')
+
+    await service.disconnect()
+  })
 })

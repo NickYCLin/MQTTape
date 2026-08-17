@@ -353,7 +353,11 @@ export default function App() {
             </div>
           </section>
 
-          <PublishComposer connected={connected && !session.busy} onPublish={session.publish} />
+          <PublishComposer
+            connected={connected && !session.busy}
+            mqttVersion={session.config.mqttVersion}
+            onPublish={session.publish}
+          />
         </main>
       </div>
 
@@ -380,6 +384,7 @@ export default function App() {
       {replayCapture && (
         <ReplayDialog
           capture={replayCapture}
+          mqttVersion={session.config.mqttVersion}
           progress={session.replayProgress}
           onStart={(options) => void session.startReplay(replayCapture, options)}
           onPause={session.pauseReplay}

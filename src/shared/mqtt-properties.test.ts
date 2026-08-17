@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vitest'
 import {
   countMqttMessageProperties,
   isMqttMessageProperties,
-  normalizeMqttPublishProperties
+  isMqttPublishProperties,
+  mqttPublishPropertiesProtocolError,
+  normalizeMqttPublishProperties,
+  toMqttPublishPacketProperties,
+  toMqttPublishProperties
 } from './mqtt-properties'
 
 const encodeBase64 = (bytes: Uint8Array): string => Buffer.from(bytes).toString('base64')
@@ -56,7 +60,47 @@ describe('MQTT 5 publish properties', () => {
     expect(isMqttMessageProperties({ correlationDataBase64: '' })).toBe(true)
     expect(isMqttMessageProperties({ correlationDataBase64: 'not base64!' })).toBe(false)
     expect(isMqttMessageProperties({ topicAlias: 65_536 })).toBe(false)
+    expect(isMqttMessageProperties({ responseTopic: 'devices/+' })).toBe(false)
     expect(isMqttMessageProperties({ subscriptionIdentifiers: [0] })).toBe(false)
     expect(isMqttMessageProperties({ userProperties: [{ name: 'source', value: 42 }] })).toBe(false)
+  })
+
+  it('filters receive-only metadata before replaying a publish', () => {
+    expect(toMqttPublishProperties({
+      payloadFormatIndicator: false,
+      topicAlias: 9,
+      subscriptionIdentifiers: [7, 12],
+      responseTopic: 'devices/replies',
+      userProperties: [{ name: 'source', value: 'mqttape' }]
+    })).toEqual({
+      payloadFormatIndicator: false,
+      responseTopic: 'devices/replies',
+      userProperties: [{ name: 'source', value: 'mqttape' }]
+    })
+  })
+
+  it('serializes duplicate user properties and binary correlation data for MQTT.js', () => {
+    const serialized = toMqttPublishPacketProperties({
+      correlationDataBase64: '3q2+7w==',
+      userProperties: [
+        { name: 'source', value: 'mqttape' },
+        { name: 'source', value: 'replay' },
+        { name: '__proto__', value: 'safe' }
+      ]
+    }, (base64) => Buffer.from(base64, 'base64'))
+
+    expect(serialized?.correlationData).toEqual(Buffer.from([0xde, 0xad, 0xbe, 0xef]))
+    expect(serialized?.userProperties?.source).toEqual(['mqttape', 'replay'])
+    expect(Object.hasOwn(serialized?.userProperties ?? {}, '__proto__')).toBe(true)
+    expect(serialized?.userProperties?.__proto__).toBe('safe')
+  })
+
+  it('strictly validates outgoing properties and blocks them on MQTT 3.1.1', () => {
+    expect(isMqttPublishProperties({ contentType: 'application/json' })).toBe(true)
+    expect(isMqttPublishProperties({ topicAlias: 1 })).toBe(false)
+    expect(mqttPublishPropertiesProtocolError(4, { contentType: 'application/json' }))
+      .toBe('MQTT 5 publish properties require an MQTT 5 connection.')
+    expect(mqttPublishPropertiesProtocolError(5, { contentType: 'application/json' }))
+      .toBeUndefined()
   })
 })

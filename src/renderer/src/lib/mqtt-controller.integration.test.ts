@@ -74,6 +74,13 @@ describe('MqttController Web Lite integration', () => {
     }
 
     await controller.connect(config)
+    await expect(controller.publish({
+      topic: 'mqttape/websocket',
+      payload: 'blocked',
+      qos: 0,
+      retain: false,
+      properties: { contentType: 'text/plain' }
+    })).rejects.toThrow('MQTT 5 publish properties require an MQTT 5 connection.')
     await controller.subscribe({ topic: 'mqttape/websocket', qos: 1 })
     await controller.publish({
       topic: 'mqttape/websocket',

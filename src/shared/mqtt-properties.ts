@@ -1,4 +1,10 @@
-import type { MqttMessageProperties, MqttUserProperty } from './contracts'
+import type {
+  MqttMessageProperties,
+  MqttPublishProperties,
+  MqttUserProperty,
+  MqttVersion
+} from './contracts'
+import { publishTopicError } from './mqtt-topic'
 
 export interface RawMqttPublishProperties {
   payloadFormatIndicator?: unknown
@@ -94,6 +100,42 @@ function isCanonicalBase64(value: string): boolean {
   return /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value)
 }
 
+const publishPropertyNames = new Set<keyof MqttPublishProperties>([
+  'payloadFormatIndicator',
+  'messageExpiryInterval',
+  'responseTopic',
+  'correlationDataBase64',
+  'userProperties',
+  'contentType'
+])
+
+export function isMqttPublishProperties(value: unknown): value is MqttPublishProperties {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false
+  const properties = value as MqttPublishProperties
+
+  if (Object.keys(value).some((name) => !publishPropertyNames.has(name as keyof MqttPublishProperties))) {
+    return false
+  }
+  if (properties.payloadFormatIndicator !== undefined &&
+      typeof properties.payloadFormatIndicator !== 'boolean') return false
+  if (properties.messageExpiryInterval !== undefined &&
+      !isIntegerInRange(properties.messageExpiryInterval, 0, MAXIMUM_MESSAGE_EXPIRY)) return false
+  if (properties.responseTopic !== undefined &&
+      (typeof properties.responseTopic !== 'string' || publishTopicError(properties.responseTopic))) {
+    return false
+  }
+  if (properties.contentType !== undefined && typeof properties.contentType !== 'string') return false
+  if (properties.correlationDataBase64 !== undefined &&
+      (typeof properties.correlationDataBase64 !== 'string' ||
+       !isCanonicalBase64(properties.correlationDataBase64))) return false
+  if (properties.userProperties !== undefined &&
+      (!Array.isArray(properties.userProperties) || properties.userProperties.some((property) =>
+        !property || typeof property.name !== 'string' || typeof property.value !== 'string'
+      ))) return false
+
+  return true
+}
+
 export function isMqttMessageProperties(value: unknown): value is MqttMessageProperties {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false
   const properties = value as MqttMessageProperties
@@ -104,7 +146,10 @@ export function isMqttMessageProperties(value: unknown): value is MqttMessagePro
       !isIntegerInRange(properties.messageExpiryInterval, 0, MAXIMUM_MESSAGE_EXPIRY)) return false
   if (properties.topicAlias !== undefined &&
       !isIntegerInRange(properties.topicAlias, 1, MAXIMUM_TOPIC_ALIAS)) return false
-  if (properties.responseTopic !== undefined && typeof properties.responseTopic !== 'string') return false
+  if (properties.responseTopic !== undefined &&
+      (typeof properties.responseTopic !== 'string' || publishTopicError(properties.responseTopic))) {
+    return false
+  }
   if (properties.contentType !== undefined && typeof properties.contentType !== 'string') return false
   if (properties.correlationDataBase64 !== undefined &&
       (typeof properties.correlationDataBase64 !== 'string' ||
@@ -133,4 +178,111 @@ export function countMqttMessageProperties(properties: MqttMessageProperties): n
   count += properties.subscriptionIdentifiers?.length ?? 0
   if (properties.contentType !== undefined) count += 1
   return count
+}
+
+export function countMqttPublishProperties(properties: MqttPublishProperties): number {
+  let count = 0
+  if (properties.payloadFormatIndicator !== undefined) count += 1
+  if (properties.messageExpiryInterval !== undefined) count += 1
+  if (properties.responseTopic !== undefined) count += 1
+  if (properties.correlationDataBase64 !== undefined) count += 1
+  count += properties.userProperties?.length ?? 0
+  if (properties.contentType !== undefined) count += 1
+  return count
+}
+
+export function toMqttPublishProperties(
+  properties: MqttMessageProperties | undefined
+): MqttPublishProperties | undefined {
+  if (!properties) return undefined
+
+  const publishProperties: MqttPublishProperties = {}
+  if (properties.payloadFormatIndicator !== undefined) {
+    publishProperties.payloadFormatIndicator = properties.payloadFormatIndicator
+  }
+  if (properties.messageExpiryInterval !== undefined) {
+    publishProperties.messageExpiryInterval = properties.messageExpiryInterval
+  }
+  if (properties.responseTopic !== undefined) {
+    publishProperties.responseTopic = properties.responseTopic
+  }
+  if (properties.correlationDataBase64 !== undefined) {
+    publishProperties.correlationDataBase64 = properties.correlationDataBase64
+  }
+  if (properties.userProperties?.length) {
+    publishProperties.userProperties = properties.userProperties.map(({ name, value }) => ({
+      name,
+      value
+    }))
+  }
+  if (properties.contentType !== undefined) publishProperties.contentType = properties.contentType
+
+  return countMqttPublishProperties(publishProperties) > 0 ? publishProperties : undefined
+}
+
+export const MQTT5_PUBLISH_PROPERTIES_VERSION_ERROR =
+  'MQTT 5 publish properties require an MQTT 5 connection.'
+export const MQTT5_PUBLISH_PROPERTIES_INVALID_ERROR =
+  'MQTT 5 publish properties are invalid.'
+
+export function mqttPublishPropertiesProtocolError(
+  mqttVersion: MqttVersion,
+  properties: MqttPublishProperties | undefined
+): string | undefined {
+  return properties && countMqttPublishProperties(properties) > 0 && mqttVersion !== 5
+    ? MQTT5_PUBLISH_PROPERTIES_VERSION_ERROR
+    : undefined
+}
+
+function toMqttUserProperties(
+  properties: MqttUserProperty[] | undefined
+): Record<string, string | string[]> | undefined {
+  if (!properties?.length) return undefined
+
+  const result: Record<string, string | string[]> = Object.create(null)
+  for (const { name, value } of properties) {
+    const current = result[name]
+    if (current === undefined) result[name] = value
+    else if (Array.isArray(current)) current.push(value)
+    else result[name] = [current, value]
+  }
+  return result
+}
+
+export interface MqttPublishPacketProperties<Binary extends Uint8Array> {
+  payloadFormatIndicator?: boolean
+  messageExpiryInterval?: number
+  responseTopic?: string
+  correlationData?: Binary
+  userProperties?: Record<string, string | string[]>
+  contentType?: string
+}
+
+export function toMqttPublishPacketProperties<Binary extends Uint8Array>(
+  value: MqttPublishProperties | undefined,
+  decodeBase64: (base64: string) => Binary
+): MqttPublishPacketProperties<Binary> | undefined {
+  if (value === undefined) return undefined
+  if (!isMqttPublishProperties(value)) throw new Error(MQTT5_PUBLISH_PROPERTIES_INVALID_ERROR)
+
+  const properties: MqttPublishPacketProperties<Binary> = {}
+  if (value.payloadFormatIndicator !== undefined) {
+    properties.payloadFormatIndicator = value.payloadFormatIndicator
+  }
+  if (value.messageExpiryInterval !== undefined) {
+    properties.messageExpiryInterval = value.messageExpiryInterval
+  }
+  if (value.responseTopic !== undefined) properties.responseTopic = value.responseTopic
+  if (value.correlationDataBase64 !== undefined) {
+    try {
+      properties.correlationData = decodeBase64(value.correlationDataBase64)
+    } catch {
+      throw new Error(MQTT5_PUBLISH_PROPERTIES_INVALID_ERROR)
+    }
+  }
+  const userProperties = toMqttUserProperties(value.userProperties)
+  if (userProperties) properties.userProperties = userProperties
+  if (value.contentType !== undefined) properties.contentType = value.contentType
+
+  return countMqttPublishProperties(value) > 0 ? properties : undefined
 }

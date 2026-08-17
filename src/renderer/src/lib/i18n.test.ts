@@ -57,6 +57,10 @@ describe('i18n', () => {
       .toBe('重播預設最多只能有 50 個。')
     expect(translateKnownMessage('zh-TW', 'Applied “正式轉沙箱”.'))
       .toBe('已套用「正式轉沙箱」。')
+    expect(translateKnownMessage(
+      'zh-TW',
+      'MQTT 5 publish properties require an MQTT 5 connection.'
+    )).toBe('MQTT 5 發布屬性需要 MQTT 5 連線。')
   })
 
   it('keeps unknown broker errors unchanged', () => {
