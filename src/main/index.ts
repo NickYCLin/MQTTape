@@ -24,7 +24,8 @@ let updateService: UpdateService | null = null
 
 const mqttService = new MqttService(
   (status) => mainWindow?.webContents.send('mqttape:status', status),
-  (message) => mainWindow?.webContents.send('mqttape:message', message)
+  (message) => mainWindow?.webContents.send('mqttape:message', message),
+  (event) => mainWindow?.webContents.send('mqttape:packet', event)
 )
 const selectedTlsFiles = new Set<string>()
 

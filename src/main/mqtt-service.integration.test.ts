@@ -2,7 +2,8 @@ import { createServer, type Server } from 'node:net'
 import type { AddressInfo } from 'node:net'
 import { Aedes } from 'aedes'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import type { ConnectionConfig, MqttMessageRecord, StatusEvent } from '../shared/contracts'
+import type { ConnectionConfig, MqttMessageRecord, MqttPacketEvent, StatusEvent } from '../shared/contracts'
+import { updateMqttPacketFlows } from '../shared/packet-flow'
 import { MqttService } from './mqtt-service'
 
 async function waitFor(
@@ -61,9 +62,11 @@ describe('MqttService integration', () => {
   it('connects, subscribes, publishes, and receives a TCP message', async () => {
     const statuses: StatusEvent[] = []
     const messages: MqttMessageRecord[] = []
+    const packets: MqttPacketEvent[] = []
     const service = new MqttService(
       (status) => statuses.push(status),
-      (message) => messages.push(message)
+      (message) => messages.push(message),
+      (packet) => packets.push(packet)
     )
 
     await service.connect(connectionConfig(port, 'mqttape_test'))
@@ -76,6 +79,7 @@ describe('MqttService integration', () => {
     })
 
     await waitFor(() => messages.some((message) => message.direction === 'incoming'))
+    await waitFor(() => packets.filter(({ command }) => command === 'puback').length >= 2)
 
     expect(statuses.some((status) => status.state === 'connected')).toBe(true)
     expect(messages).toEqual(expect.arrayContaining([
@@ -91,6 +95,12 @@ describe('MqttService integration', () => {
         payloadText: '{"working":true}',
         qos: 1
       })
+    ]))
+    expect(packets).toEqual(expect.arrayContaining([
+      expect.objectContaining({ direction: 'sent', command: 'publish', qos: 1, topic: 'mqttape/integration' }),
+      expect.objectContaining({ direction: 'received', command: 'puback' }),
+      expect.objectContaining({ direction: 'received', command: 'publish', qos: 1, topic: 'mqttape/integration' }),
+      expect.objectContaining({ direction: 'sent', command: 'puback' })
     ]))
 
     const binaryPayload = 'AEH/IH4K'
@@ -121,13 +131,31 @@ describe('MqttService integration', () => {
   })
 
   it('delivers and clears retained QoS 2 messages, then honors unsubscribe', async () => {
-    const publisher = new MqttService(() => undefined, () => undefined)
+    const publisherPackets: MqttPacketEvent[] = []
+    const publisher = new MqttService(
+      () => undefined,
+      () => undefined,
+      (packet) => publisherPackets.push(packet)
+    )
     const received: MqttMessageRecord[] = []
     const subscriber = new MqttService(() => undefined, (message) => received.push(message))
     const topic = 'mqttape/retained/qos2'
 
     await publisher.connect(connectionConfig(port, 'mqttape_publisher'))
     await publisher.publish({ topic, payload: 'retained-value', qos: 2, retain: true })
+    const qos2Flow = publisherPackets
+      .reduce(updateMqttPacketFlows, [])
+      .find((flow) => flow.topic === topic && flow.qos === 2)
+    expect(qos2Flow).toEqual(expect.objectContaining({
+      messageDirection: 'outgoing',
+      state: 'completed'
+    }))
+    expect(qos2Flow?.steps.map(({ direction, command }) => `${direction}:${command}`)).toEqual([
+      'sent:publish',
+      'received:pubrec',
+      'sent:pubrel',
+      'received:pubcomp'
+    ])
     await publisher.disconnect()
 
     await subscriber.connect(connectionConfig(port, 'mqttape_subscriber'))

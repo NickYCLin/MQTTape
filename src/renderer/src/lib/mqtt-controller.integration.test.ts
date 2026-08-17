@@ -3,7 +3,7 @@ import type { AddressInfo } from 'node:net'
 import { Aedes } from 'aedes'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { createWebSocketStream, WebSocketServer } from 'ws'
-import type { ConnectionConfig, MqttMessageRecord, StatusEvent } from '../../../shared/contracts'
+import type { ConnectionConfig, MqttMessageRecord, MqttPacketEvent, StatusEvent } from '../../../shared/contracts'
 import { MqttController } from './mqtt-controller'
 
 async function waitFor(predicate: () => boolean, timeoutMilliseconds = 4_000): Promise<void> {
@@ -50,9 +50,11 @@ describe('MqttController Web Lite integration', () => {
   it('connects, subscribes, and preserves text and binary payloads over WebSocket', async () => {
     const statuses: StatusEvent[] = []
     const messages: MqttMessageRecord[] = []
+    const packets: MqttPacketEvent[] = []
     const controller = new MqttController()
     const removeStatus = controller.onStatus((status) => statuses.push(status))
     const removeMessage = controller.onMessage((message) => messages.push(message))
+    const removePacket = controller.onPacket((packet) => packets.push(packet))
     const config: ConnectionConfig = {
       name: 'WebSocket broker',
       protocol: 'ws',
@@ -99,6 +101,12 @@ describe('MqttController Web Lite integration', () => {
         payloadText: '{"transport":"websocket"}'
       })
     ]))
+    expect(packets).toEqual(expect.arrayContaining([
+      expect.objectContaining({ direction: 'sent', command: 'publish', qos: 1, topic: 'mqttape/websocket' }),
+      expect.objectContaining({ direction: 'received', command: 'puback' }),
+      expect.objectContaining({ direction: 'received', command: 'publish', qos: 1, topic: 'mqttape/websocket' }),
+      expect.objectContaining({ direction: 'sent', command: 'puback' })
+    ]))
 
     const binaryPayload = 'AEH/IH4K'
     await controller.publish({
@@ -127,6 +135,7 @@ describe('MqttController Web Lite integration', () => {
     await controller.disconnect()
     removeStatus()
     removeMessage()
+    removePacket()
     controller.destroy()
   })
 })

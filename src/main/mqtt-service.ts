@@ -8,6 +8,7 @@ import { readFile } from 'node:fs/promises'
 import type {
   ConnectionConfig,
   MqttMessageRecord,
+  MqttPacketEvent,
   MqttQos,
   PublishRequest,
   StatusEvent,
@@ -22,9 +23,11 @@ import {
   type RawMqttPublishProperties
 } from '../shared/mqtt-properties'
 import { publishTopicError } from '../shared/mqtt-topic'
+import { createMqttPacketEvent } from '../shared/packet-flow'
 
 type StatusListener = (event: StatusEvent) => void
 type MessageListener = (message: MqttMessageRecord) => void
+type PacketListener = (event: MqttPacketEvent) => void
 type SecureClientOptions = IClientOptions & { passphrase?: string }
 
 export async function createClientOptions(config: ConnectionConfig): Promise<IClientOptions> {
@@ -63,10 +66,16 @@ export class MqttService {
   private client: MqttClient | undefined
   private statusListener: StatusListener
   private messageListener: MessageListener
+  private packetListener: PacketListener
 
-  constructor(statusListener: StatusListener, messageListener: MessageListener) {
+  constructor(
+    statusListener: StatusListener,
+    messageListener: MessageListener,
+    packetListener: PacketListener = () => undefined
+  ) {
     this.statusListener = statusListener
     this.messageListener = messageListener
+    this.packetListener = packetListener
   }
 
   async connect(config: ConnectionConfig): Promise<void> {
@@ -213,6 +222,14 @@ export class MqttService {
     })
     client.on('error', (error) => {
       this.statusListener({ state: 'error', detail: error.message })
+    })
+    client.on('packetsend', (packet) => {
+      const event = createMqttPacketEvent(packet, 'sent')
+      if (event) this.packetListener(event)
+    })
+    client.on('packetreceive', (packet) => {
+      const event = createMqttPacketEvent(packet, 'received')
+      if (event) this.packetListener(event)
     })
     client.on('message', (topic, payload, packet) => {
       this.messageListener(this.toIncomingMessage(topic, payload, packet))
