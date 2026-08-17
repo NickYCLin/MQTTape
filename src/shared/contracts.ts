@@ -103,6 +103,30 @@ export interface ReplayTopicRemap {
 
 export type ReplayState = 'idle' | 'running' | 'paused' | 'completed' | 'cancelled'
 
+export type UpdateMode = 'automatic' | 'manual' | 'disabled'
+export type UpdateState =
+  | 'idle'
+  | 'checking'
+  | 'available'
+  | 'downloading'
+  | 'downloaded'
+  | 'up-to-date'
+  | 'error'
+export type UpdateSupportReason =
+  | 'development'
+  | 'portable'
+  | 'unsigned-macos'
+  | 'unsupported-package'
+
+export interface AppUpdateStatus {
+  mode: UpdateMode
+  state: UpdateState
+  currentVersion: string
+  targetVersion?: string
+  progress?: number
+  reason?: UpdateSupportReason
+}
+
 export interface ReplayProgress {
   state: ReplayState
   sent: number
@@ -121,6 +145,10 @@ export interface MqttapeBridge {
   saveProfile(request: SaveBrokerProfileRequest): Promise<BrokerProfile>
   deleteProfile(id: string): Promise<void>
   selectTlsFile(kind: TlsFileKind): Promise<string | null>
+  getUpdateStatus(): Promise<AppUpdateStatus>
+  checkForUpdates(): Promise<AppUpdateStatus>
+  installUpdate(): Promise<boolean>
   onStatus(listener: (event: StatusEvent) => void): () => void
   onMessage(listener: (message: MqttMessageRecord) => void): () => void
+  onUpdateStatus(listener: (status: AppUpdateStatus) => void): () => void
 }

@@ -28,6 +28,7 @@ message timeline and portable capture files.
 - Saved broker profiles with encrypted desktop secrets
 - Custom CA and client certificate/key selection for desktop mTLS
 - Switchable English and Traditional Chinese interfaces with a saved local preference
+- Background update checks and downloads for installed Windows and supported Linux builds
 - Portable Windows build plus installers for Windows, macOS, and Linux
 
 > MQTTape is a client, not a broker. Connect it to Mosquitto, EMQX, HiveMQ, or
@@ -44,6 +45,7 @@ message timeline and portable capture files.
 | Local capture export/replay | Yes | Yes |
 | Saved connection profiles | Encrypted secrets | No stored secrets |
 | Custom CA and mTLS | Yes | No |
+| Automatic application updates | Supported packages | Browser-managed |
 
 Browsers cannot open arbitrary TCP sockets, so Web Lite intentionally limits the
 protocol selector to WebSocket transports.
@@ -63,6 +65,19 @@ passwords and certificate paths.
 TLS files must be selected with MQTTape's file picker. A client certificate and
 private key must be configured together, while a custom CA is optional. Capture
 exports omit passwords, passphrases, and every local certificate path.
+
+## Automatic updates
+
+The Windows `Setup` installer and supported Linux packages check GitHub Releases
+after launch and every six hours. Updates download in the background; once ready,
+choose **Restart to update** in the header. A downloaded update is also applied on
+a normal application exit.
+
+The Windows portable executable cannot safely replace itself, so it links to the
+latest manual download. Unsigned macOS builds also remain manual until code
+signing is configured. Builds released before automatic updating was introduced
+need one final manual installation of a newer `Setup` package; later releases can
+update in place without uninstalling first.
 
 ## Development
 
@@ -166,7 +181,7 @@ Please report vulnerabilities according to [SECURITY.md](SECURITY.md).
 - MQTT 5 properties and QoS packet-flow inspection
 - Multiple simultaneous broker sessions
 - Last Will, custom WebSocket headers, and advanced authentication
-- Signed installers, automatic updates, and additional CPU architectures
+- Signed installers and additional CPU architectures
 
 ## Contributing
 
