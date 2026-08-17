@@ -1030,6 +1030,75 @@ input[type='checkbox'] {
 
 /* ===== Payload inspector =============================================== */
 
+.mqtt-properties {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--accent-soft) 42%, var(--surface));
+}
+
+.mqtt-properties-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.mqtt-properties-head h3 { margin-top: 3px; }
+
+.mqtt-properties-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+.mqtt-properties-meta > div {
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+.mqtt-properties-meta dt {
+  margin-bottom: 4px;
+  color: var(--text-3);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.mqtt-properties-meta dd {
+  overflow: hidden;
+  margin: 0;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mqtt-user-properties {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+.mqtt-user-properties h4 { padding: 9px 10px; }
+.mqtt-user-properties table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.mqtt-user-properties th,
+.mqtt-user-properties td {
+  padding: 8px 10px;
+  border-top: 1px solid var(--border);
+  text-align: left;
+  word-break: break-word;
+}
+.mqtt-user-properties th {
+  color: var(--text-3);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.mqtt-user-properties td:first-child { width: 34%; }
+
 .inspector-bar {
   min-height: 44px;
   display: flex;

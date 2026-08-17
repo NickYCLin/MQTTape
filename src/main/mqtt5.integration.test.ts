@@ -66,8 +66,16 @@ describe('MqttService MQTT 5 integration', () => {
                 dup: false,
                 retain: false,
                 properties: {
+                  payloadFormatIndicator: true,
+                  messageExpiryInterval: 120,
+                  responseTopic: 'mqttape/replies',
+                  correlationData: Buffer.from([0xde, 0xad, 0xbe, 0xef]),
                   contentType: 'application/json',
-                  userProperties: { source: 'mqttape-test' }
+                  userProperties: {
+                    source: ['mqttape-test', 'integration'],
+                    region: 'tw'
+                  },
+                  subscriptionIdentifier: [7, 12]
                 }
               }, packetOptions))
             }
@@ -132,7 +140,24 @@ describe('MqttService MQTT 5 integration', () => {
     expect(statuses.some((status) => status.state === 'connected')).toBe(true)
     expect(messages).toEqual(expect.arrayContaining([
       expect.objectContaining({ direction: 'outgoing', qos: 1, payloadText: '{"version":5}' }),
-      expect.objectContaining({ direction: 'incoming', qos: 0, payloadText: '{"version":5}' })
+      expect.objectContaining({
+        direction: 'incoming',
+        qos: 0,
+        payloadText: '{"version":5}',
+        properties: {
+          payloadFormatIndicator: true,
+          messageExpiryInterval: 120,
+          responseTopic: 'mqttape/replies',
+          correlationDataBase64: '3q2+7w==',
+          userProperties: [
+            { name: 'source', value: 'mqttape-test' },
+            { name: 'source', value: 'integration' },
+            { name: 'region', value: 'tw' }
+          ],
+          subscriptionIdentifiers: [7, 12],
+          contentType: 'application/json'
+        }
+      })
     ]))
 
     await service.disconnect()

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import type { MqttMessageRecord } from '../../../shared/contracts'
+import type { MqttMessageProperties, MqttMessageRecord } from '../../../shared/contracts'
 import {
   inspectLoRaWanUplink,
   type LoRaWanUplinkInspection
@@ -12,6 +12,7 @@ import {
   prettyPayload,
   type PayloadKind
 } from '../../../shared/message'
+import { countMqttMessageProperties } from '../../../shared/mqtt-properties'
 import { DownloadIcon } from './icons'
 import { useI18n } from '../i18n'
 
@@ -90,6 +91,81 @@ function formatDataRate(inspection: LoRaWanUplinkInspection): string | undefined
       : `${inspection.bandwidthHz} Hz`)
   }
   return parts.length ? parts.join(' · ') : undefined
+}
+
+function MqttPropertiesInspector({ properties }: { properties: MqttMessageProperties }) {
+  const { t, formatNumber } = useI18n()
+  const propertyCount = countMqttMessageProperties(properties)
+  if (propertyCount === 0) return null
+
+  const correlationDataBytes = properties.correlationDataBase64 === undefined
+    ? undefined
+    : decodePayloadBytes(properties.correlationDataBase64).byteLength
+  const metadata = [
+    [t('mqtt5.contentType'), properties.contentType],
+    [t('mqtt5.payloadFormat'), properties.payloadFormatIndicator === undefined
+      ? undefined
+      : t(properties.payloadFormatIndicator ? 'mqtt5.payloadFormatUtf8' : 'mqtt5.payloadFormatBytes')],
+    [t('mqtt5.messageExpiry'), properties.messageExpiryInterval === undefined
+      ? undefined
+      : t('mqtt5.seconds', { count: formatNumber(properties.messageExpiryInterval) })],
+    [t('mqtt5.responseTopic'), properties.responseTopic],
+    [t('mqtt5.topicAlias'), properties.topicAlias === undefined
+      ? undefined
+      : formatNumber(properties.topicAlias)],
+    [t('mqtt5.subscriptionIdentifiers'), properties.subscriptionIdentifiers?.join(', ')],
+    [correlationDataBytes === undefined
+      ? t('mqtt5.correlationData')
+      : t('mqtt5.correlationDataBytes', { count: formatNumber(correlationDataBytes) }),
+    properties.correlationDataBase64]
+  ].filter((entry): entry is [string, string] => typeof entry[1] === 'string')
+
+  return (
+    <section className="mqtt-properties" aria-label={t('mqtt5.properties')}>
+      <div className="mqtt-properties-head">
+        <div>
+          <span className="eyebrow">MQTT 5</span>
+          <h3>{t('mqtt5.properties')}</h3>
+        </div>
+        <span className="tag accent">{t('mqtt5.propertyCount', { count: formatNumber(propertyCount) })}</span>
+      </div>
+
+      {metadata.length > 0 && (
+        <dl className="mqtt-properties-meta">
+          {metadata.map(([label, value]) => (
+            <div key={label}>
+              <dt>{label}</dt>
+              <dd className="mono" title={value}>{value || '∅'}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+
+      {properties.userProperties && properties.userProperties.length > 0 && (
+        <div className="mqtt-user-properties">
+          <h4>{t('mqtt5.userProperties')}</h4>
+          <div className="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>{t('mqtt5.userPropertyName')}</th>
+                  <th>{t('mqtt5.userPropertyValue')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {properties.userProperties.map((property, index) => (
+                  <tr key={`${property.name}-${index}`}>
+                    <td className="mono">{property.name || '∅'}</td>
+                    <td className="mono">{property.value || '∅'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </section>
+  )
 }
 
 function LoRaWanInspector({
@@ -252,6 +328,7 @@ export function PayloadInspector({ message }: PayloadInspectorProps) {
 
   return (
     <div className="inspector">
+      {message.properties && <MqttPropertiesInspector properties={message.properties} />}
       <div className="inspector-bar">
         <div className="segmented" role="tablist" aria-label={t('payload.view')}>
           {loRaWanInspection && (

@@ -7,6 +7,7 @@ import type {
   StatusEvent,
   SubscribeRequest
 } from '../../../shared/contracts'
+import { normalizeMqttPublishProperties } from '../../../shared/mqtt-properties'
 import { publishTopicError } from '../../../shared/mqtt-topic'
 
 type StatusListener = (event: StatusEvent) => void
@@ -236,7 +237,8 @@ export class MqttController {
         duplicate: packet.dup,
         payloadBase64: bytesToBase64(bytes),
         payloadText: new TextDecoder().decode(bytes),
-        size: bytes.byteLength
+        size: bytes.byteLength,
+        properties: normalizeMqttPublishProperties(packet.properties, bytesToBase64)
       })
     })
   }

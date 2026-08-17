@@ -45,6 +45,22 @@ export interface SubscribeRequest {
   qos: MqttQos
 }
 
+export interface MqttUserProperty {
+  name: string
+  value: string
+}
+
+export interface MqttMessageProperties {
+  payloadFormatIndicator?: boolean
+  messageExpiryInterval?: number
+  topicAlias?: number
+  responseTopic?: string
+  correlationDataBase64?: string
+  userProperties?: MqttUserProperty[]
+  subscriptionIdentifiers?: number[]
+  contentType?: string
+}
+
 export interface MqttMessageRecord {
   id: string
   direction: 'incoming' | 'outgoing'
@@ -56,6 +72,7 @@ export interface MqttMessageRecord {
   payloadBase64: string
   payloadText: string
   size: number
+  properties?: MqttMessageProperties
 }
 
 export interface StatusEvent {

@@ -9,6 +9,7 @@ All notable changes to MQTTape are documented in this file.
 - Local LoRaWAN downlink history that retains up to 1,000 parsed events across restarts without storing raw MQTT payloads or broker credentials.
 - Versioned downlink-history JSON export plus an in-app action to clear saved events.
 - Playwright UI smoke tests for Web Lite language and downlink-history flows plus the Electron preload bridge.
+- MQTT 5 Publish Properties capture and inspection in both the desktop app and Web Lite, including duplicate User Properties and binary Correlation Data.
 
 ## [0.11.0] - 2026-08-17
 

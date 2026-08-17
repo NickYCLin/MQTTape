@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { MqttMessageRecord } from '../../../shared/contracts'
 import { formatBytes, isProbablyBinaryText } from '../../../shared/message'
+import { countMqttMessageProperties } from '../../../shared/mqtt-properties'
 import { ChevronIcon } from './icons'
 import { PayloadInspector } from './PayloadInspector'
 import { useI18n } from '../i18n'
@@ -40,6 +41,9 @@ export function MessageTimeline({ messages }: MessageTimelineProps) {
     <div className="timeline" role="log" aria-live="polite">
       {messages.map((message) => {
         const isExpanded = expanded.has(message.id)
+        const propertyCount = message.properties
+          ? countMqttMessageProperties(message.properties)
+          : 0
         return (
           <article
             className={`msg ${message.direction} ${isExpanded ? 'expanded' : ''}`}
@@ -55,6 +59,14 @@ export function MessageTimeline({ messages }: MessageTimelineProps) {
               <span className="msg-flags">
                 <span className="tag">Q{message.qos}</span>
                 {message.retain && <span className="tag accent">R</span>}
+                {propertyCount > 0 && (
+                  <span
+                    className="tag accent"
+                    title={t('mqtt5.propertyCount', { count: propertyCount })}
+                  >
+                    MQTT 5
+                  </span>
+                )}
               </span>
               <span className="msg-size">{formatBytes(message.size)}</span>
               <ChevronIcon className="chevron" width={16} height={16} />
