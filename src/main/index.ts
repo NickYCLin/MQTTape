@@ -14,6 +14,10 @@ import { MqttService } from './mqtt-service'
 import { ProfileStore } from './profile-store'
 import { UpdateService } from './update-service'
 import { resolveUpdateSupport } from './update-support'
+import {
+  isLoRaWanDownlinkHistoryFile,
+  type LoRaWanDownlinkHistoryFile
+} from '../shared/lorawan-downlink-history'
 
 let mainWindow: BrowserWindow | null = null
 let updateService: UpdateService | null = null
@@ -64,6 +68,26 @@ function registerIpcHandlers(profileStore: ProfileStore, updater: UpdateService)
     await writeFile(result.filePath, JSON.stringify(capture, null, 2), 'utf8')
     return true
   })
+  ipcMain.handle(
+    'mqttape:save-downlink-history',
+    async (_event, history: LoRaWanDownlinkHistoryFile) => {
+      if (!isLoRaWanDownlinkHistoryFile(history)) {
+        throw new Error('The downlink history is not valid.')
+      }
+      const result = await dialog.showSaveDialog(mainWindow!, {
+        title: 'Export MQTTape downlink history',
+        defaultPath: join(
+          app.getPath('documents'),
+          `mqttape-downlinks-${new Date().toISOString().replace(/[:.]/g, '-')}.json`
+        ),
+        filters: [{ name: 'MQTTape downlink history', extensions: ['json'] }]
+      })
+
+      if (result.canceled || !result.filePath) return false
+      await writeFile(result.filePath, JSON.stringify(history, null, 2), 'utf8')
+      return true
+    }
+  )
   ipcMain.handle('mqttape:list-profiles', () => profileStore.list())
   ipcMain.handle(
     'mqttape:save-profile',

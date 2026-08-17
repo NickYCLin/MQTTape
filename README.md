@@ -71,7 +71,7 @@ Broker Host、認證資料、Tenant 後綴與 Topic 結構可能因部署方式�
 
 ### Downlink 狀態追蹤
 
-在「Downlinks」頁籤中，MQTTape 會整理本次工作階段觀察到的 Downlink 要求與平台回報。請同時訂閱狀態 Topic：
+在「Downlinks」頁籤中，MQTTape 會整理實際觀察到的 Downlink 要求與平台回報，並將最多 1,000 筆解析後事件保存在這台裝置，讓要求與後續 ACK 可以跨程式重啟繼續關聯。請同時訂閱狀態 Topic：
 
 ```text
 The Things Stack: v3/<application-id>/devices/+/down/#
@@ -80,7 +80,10 @@ ChirpStack:      application/<application-id>/device/+/event/+
 
 - The Things Stack：MQTTape 建立的命令會加入唯一 `correlation_ids`，用來精確關聯 `queued`、`sent`、`ack`、`nack` 與 `failed`。
 - ChirpStack：`txack` 與 `ack` 會以 `queueItemId` 精確關聯；由於原始 MQTT Downlink 命令不含平台產生的 Queue Item ID，首次把命令連到 `txack` 時只能依同一裝置的事件順序推定，畫面會明確標示。
-- 狀態追蹤只使用 MQTTape 本次工作階段實際看見的訊息，不會查詢 LoRaWAN 平台的完整佇列，也不會在缺少回報事件時自行判定無線傳送成功。
+- 本機歷史只包含解析後的狀態中繼資料，不會保存原始 MQTT Payload 或 Broker 憑證；可以隨時在 Downlinks 頁籤匯出版本化 JSON 或清除。
+- 狀態追蹤只使用 MQTTape 實際看見的訊息，不會查詢 LoRaWAN 平台的完整佇列，也不會在缺少回報事件時自行判定無線傳送成功。
+
+匯出的 Downlink 歷史格式識別碼為 `mqttape-downlink-history`、版本為 `1`。它適合保存與檢查狀態事件，但不包含可重新發布的完整 Downlink Payload；需要無損重播時仍應使用 MQTTape 擷取檔。
 
 ## 下載
 

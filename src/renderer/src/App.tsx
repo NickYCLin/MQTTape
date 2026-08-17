@@ -27,6 +27,7 @@ import type { CaptureFile, ConnectionState } from '../../shared/contracts'
 import { isCaptureFile } from '../../shared/capture'
 import { useI18n } from './i18n'
 import type { TranslationKey } from './lib/i18n'
+import type { LoRaWanDownlinkHistoryFile } from '../../shared/lorawan-downlink-history'
 
 const statusLabelKeys: Record<ConnectionState, TranslationKey> = {
   disconnected: 'status.disconnected',
@@ -84,6 +85,26 @@ export default function App() {
       const anchor = document.createElement('a')
       anchor.href = url
       anchor.download = `mqttape-${new Date().toISOString().replace(/[:.]/g, '-')}.json`
+      anchor.click()
+      window.setTimeout(() => URL.revokeObjectURL(url), 0)
+      return true
+    } catch (reason) {
+      session.reportError(reason instanceof Error ? reason.message : String(reason))
+      return false
+    }
+  }
+
+  const saveDownlinkHistory = async (
+    history: LoRaWanDownlinkHistoryFile
+  ): Promise<boolean> => {
+    try {
+      if (window.mqttape) return window.mqttape.saveDownlinkHistory(history)
+
+      const blob = new Blob([JSON.stringify(history, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.download = `mqttape-downlinks-${new Date().toISOString().replace(/[:.]/g, '-')}.json`
       anchor.click()
       window.setTimeout(() => URL.revokeObjectURL(url), 0)
       return true
@@ -323,7 +344,11 @@ export default function App() {
                   }}
                 />
               ) : (
-                <LoRaWanDownlinkTracker messages={session.messages} query={query} />
+                <LoRaWanDownlinkTracker
+                  messages={session.messages}
+                  query={query}
+                  onExport={saveDownlinkHistory}
+                />
               )}
             </div>
           </section>

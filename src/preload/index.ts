@@ -12,6 +12,7 @@ import type {
   SubscribeRequest,
   TlsFileKind
 } from '../shared/contracts'
+import type { LoRaWanDownlinkHistoryFile } from '../shared/lorawan-downlink-history'
 
 const bridge: MqttapeBridge = {
   connect: (config: ConnectionConfig) => ipcRenderer.invoke('mqttape:connect', config),
@@ -20,6 +21,8 @@ const bridge: MqttapeBridge = {
   unsubscribe: (topic: string) => ipcRenderer.invoke('mqttape:unsubscribe', topic),
   publish: (request: PublishRequest) => ipcRenderer.invoke('mqttape:publish', request),
   saveCapture: (capture: CaptureFile) => ipcRenderer.invoke('mqttape:save-capture', capture),
+  saveDownlinkHistory: (history: LoRaWanDownlinkHistoryFile) =>
+    ipcRenderer.invoke('mqttape:save-downlink-history', history),
   listProfiles: (): Promise<BrokerProfile[]> => ipcRenderer.invoke('mqttape:list-profiles'),
   saveProfile: (request: SaveBrokerProfileRequest): Promise<BrokerProfile> =>
     ipcRenderer.invoke('mqttape:save-profile', request),

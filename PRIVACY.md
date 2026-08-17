@@ -36,8 +36,16 @@ not save passwords or certificate paths.
 Captures are held locally and are exported only when you request an export.
 Exported captures omit passwords, passphrases, and local certificate paths. You
 can remove saved profiles and exported capture files from your device at any
-time, and uninstall the desktop application using your operating system's normal
-application removal controls.
+time.
+
+MQTTape stores up to 1,000 parsed LoRaWAN downlink status events on the local
+device so requests and later acknowledgements can remain associated across app
+restarts. This history can include device and application identifiers, topics,
+correlation identifiers, timestamps, frame metadata, and platform error text. It
+does not include raw MQTT payloads or broker credentials. You can export or clear
+the history from the Downlinks view. Uninstalling the desktop application uses
+your operating system's normal application removal controls; depending on the
+operating system, local application data may need to be removed separately.
 
 ## Changes and questions
 

@@ -1,17 +1,30 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { MqttMessageRecord } from '../../../shared/contracts'
 import {
-  buildLoRaWanDownlinkTracks,
+  buildLoRaWanDownlinkTracksFromEvents,
+  inspectLoRaWanDownlinkEvents,
   type LoRaWanDownlinkCorrelationBasis,
   type LoRaWanDownlinkEventKind,
   type LoRaWanDownlinkStatus
 } from '../../../shared/lorawan-downlink-status'
+import {
+  MAX_DOWNLINK_HISTORY_EVENTS,
+  canUseLoRaWanDownlinkHistoryStorage,
+  clearLoRaWanDownlinkHistory,
+  createLoRaWanDownlinkHistoryFile,
+  mergeLoRaWanDownlinkHistoryEvents,
+  readLoRaWanDownlinkHistory,
+  writeLoRaWanDownlinkHistory,
+  type LoRaWanDownlinkHistoryFile
+} from '../../../shared/lorawan-downlink-history'
 import { useI18n } from '../i18n'
 import type { TranslationKey } from '../lib/i18n'
+import { DownloadIcon, TrashIcon } from './icons'
 
 interface LoRaWanDownlinkTrackerProps {
   messages: MqttMessageRecord[]
   query: string
+  onExport: (history: LoRaWanDownlinkHistoryFile) => Promise<boolean>
 }
 
 const statusKeys: Record<LoRaWanDownlinkStatus, TranslationKey> = {
@@ -42,10 +55,42 @@ const basisKeys: Record<LoRaWanDownlinkCorrelationBasis, TranslationKey> = {
 
 export function LoRaWanDownlinkTracker({
   messages,
-  query
+  query,
+  onExport
 }: LoRaWanDownlinkTrackerProps) {
   const { t, formatNumber, formatDateTime } = useI18n()
-  const tracks = useMemo(() => buildLoRaWanDownlinkTracks(messages), [messages])
+  const [historyEvents, setHistoryEvents] = useState(() => (
+    readLoRaWanDownlinkHistory(window.localStorage)
+  ))
+  const [storageAvailable] = useState(() => (
+    canUseLoRaWanDownlinkHistoryStorage(window.localStorage)
+  ))
+  const [exporting, setExporting] = useState(false)
+  const ignoredEventIds = useRef(new Set<string>())
+  const observedEvents = useMemo(
+    () => messages.flatMap(inspectLoRaWanDownlinkEvents),
+    [messages]
+  )
+
+  useEffect(() => {
+    const additions = observedEvents.filter((event) => !ignoredEventIds.current.has(event.id))
+    if (additions.length === 0) return
+    setHistoryEvents((current) => {
+      const currentIds = new Set(current.map(({ id }) => id))
+      if (additions.every(({ id }) => currentIds.has(id))) return current
+      return mergeLoRaWanDownlinkHistoryEvents(current, additions)
+    })
+  }, [observedEvents])
+
+  useEffect(() => {
+    if (historyEvents.length === 0) return
+    writeLoRaWanDownlinkHistory(window.localStorage, historyEvents)
+  }, [historyEvents])
+
+  const tracks = useMemo(
+    () => buildLoRaWanDownlinkTracksFromEvents(historyEvents),
+    [historyEvents]
+  )
   const visibleTracks = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase()
     if (!normalized) return tracks
@@ -60,6 +105,22 @@ export function LoRaWanDownlinkTracker({
       ...track.events.flatMap((event) => [event.topic, event.kind, event.error])
     ].filter(Boolean).join('\n').toLocaleLowerCase().includes(normalized))
   }, [query, tracks])
+
+  const clearHistory = (): void => {
+    if (!window.confirm(t('downlinks.clearConfirm'))) return
+    ignoredEventIds.current = new Set(observedEvents.map(({ id }) => id))
+    clearLoRaWanDownlinkHistory(window.localStorage)
+    setHistoryEvents([])
+  }
+
+  const exportHistory = async (): Promise<void> => {
+    setExporting(true)
+    try {
+      await onExport(createLoRaWanDownlinkHistoryFile(historyEvents))
+    } finally {
+      setExporting(false)
+    }
+  }
 
   if (tracks.length === 0) {
     return (
@@ -82,9 +143,40 @@ export function LoRaWanDownlinkTracker({
           <span className="eyebrow">{t('downlinks.eyebrow')}</span>
           <h3>{t('downlinks.title')}</h3>
           <p>{t('downlinks.help')}</p>
+          <p className="downlink-history-note">
+            {t('downlinks.historyPrivacy', {
+              count: formatNumber(MAX_DOWNLINK_HISTORY_EVENTS)
+            })}
+          </p>
         </div>
-        <span className="badge">{t('downlinks.count', { count: formatNumber(visibleTracks.length) })}</span>
+        <div className="downlink-tracker-summary">
+          <span className="badge">{t('downlinks.count', { count: formatNumber(visibleTracks.length) })}</span>
+          <span className="badge">
+            {t('downlinks.historyCount', { count: formatNumber(historyEvents.length) })}
+          </span>
+          <div className="downlink-history-actions">
+            <button
+              className="btn ghost sm"
+              type="button"
+              disabled={exporting}
+              onClick={() => void exportHistory()}
+            >
+              <DownloadIcon width={14} height={14} />
+              {t(exporting ? 'downlinks.exporting' : 'downlinks.exportHistory')}
+            </button>
+            <button className="btn ghost sm" type="button" onClick={clearHistory}>
+              <TrashIcon width={14} height={14} />
+              {t('downlinks.clearHistory')}
+            </button>
+          </div>
+        </div>
       </header>
+
+      {!storageAvailable && (
+        <p className="downlink-storage-warning" role="status">
+          {t('downlinks.storageUnavailable')}
+        </p>
+      )}
 
       {visibleTracks.length === 0 ? (
         <div className="placeholder">{t('downlinks.noMatch', { query })}</div>

@@ -1,3 +1,5 @@
+import type { LoRaWanDownlinkHistoryFile } from './lorawan-downlink-history'
+
 export type MqttProtocol = 'mqtt' | 'mqtts' | 'ws' | 'wss'
 export type MqttQos = 0 | 1 | 2
 export type MqttVersion = 4 | 5
@@ -141,6 +143,7 @@ export interface MqttapeBridge {
   unsubscribe(topic: string): Promise<void>
   publish(request: PublishRequest): Promise<void>
   saveCapture(capture: CaptureFile): Promise<boolean>
+  saveDownlinkHistory(history: LoRaWanDownlinkHistoryFile): Promise<boolean>
   listProfiles(): Promise<BrokerProfile[]>
   saveProfile(request: SaveBrokerProfileRequest): Promise<BrokerProfile>
   deleteProfile(id: string): Promise<void>
