@@ -4,6 +4,12 @@ All notable changes to MQTTape are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Automatic LoRaWAN uplink recognition for The Things Stack and ChirpStack JSON events.
+- Device, application, frame, data-rate, frequency, RSSI, and SNR inspection.
+- Embedded Base64 frame previews and lossless raw LoRaWAN frame downloads.
+
 ## [0.8.0] - 2026-08-17
 
 ### Added

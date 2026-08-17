@@ -478,6 +478,30 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 .payload-inspector-actions button:hover { color: var(--text); border-color: #435365; }
 .payload-inspector-note { margin: 0; padding: 7px 11px; color: #d9ad70; border-bottom: 1px solid rgba(240, 179, 93, 0.16); background: rgba(240, 179, 93, 0.045); font-size: 8px; line-height: 1.5; }
 .message-detail pre.hex-dump { white-space: pre; word-break: normal; }
+.lorawan-inspector { display: grid; gap: 10px; padding: 12px; }
+.lorawan-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.lorawan-heading h3 { margin: 3px 0 0; color: #dce5ee; font-size: 13px; }
+.lorawan-badge { padding: 4px 7px; color: var(--accent); border: 1px solid rgba(240, 179, 93, 0.34); border-radius: 999px; background: rgba(240, 179, 93, 0.055); font: 700 8px ui-monospace, 'Cascadia Mono', monospace; letter-spacing: 0.06em; }
+.lorawan-metadata { display: grid; grid-template-columns: repeat(auto-fit, minmax(135px, 1fr)); gap: 7px; margin: 0; }
+.lorawan-metadata > div { min-width: 0; padding: 8px 9px; border: 1px solid var(--line-soft); border-radius: 7px; background: #0d141c; }
+.lorawan-metadata dt { margin-bottom: 4px; color: var(--faint); font-size: 8px; font-weight: 650; letter-spacing: 0.04em; text-transform: uppercase; }
+.lorawan-metadata dd { overflow: hidden; margin: 0; color: #cbd6e1; font: 9px ui-monospace, 'Cascadia Mono', monospace; text-overflow: ellipsis; white-space: nowrap; }
+.lorawan-section { overflow: hidden; border: 1px solid var(--line-soft); border-radius: 8px; background: #0b1219; }
+.lorawan-section > h4,
+.lorawan-section-heading { min-height: 34px; margin: 0; padding: 8px 10px; border-bottom: 1px solid var(--line-soft); }
+.lorawan-section > h4,
+.lorawan-section-heading h4 { color: #c8d3de; font-size: 9px; font-weight: 650; }
+.lorawan-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.lorawan-section-heading h4 { margin: 0 0 3px; }
+.lorawan-section-heading code { max-width: min(520px, 55vw); display: block; overflow: hidden; color: var(--faint); font: 8px ui-monospace, 'Cascadia Mono', monospace; text-overflow: ellipsis; white-space: nowrap; }
+.lorawan-section > pre { border: 0; }
+.lorawan-empty { margin: 0; padding: 12px; color: var(--faint); font-size: 9px; }
+.lorawan-table-scroll { overflow-x: auto; }
+.lorawan-section table { width: 100%; border-collapse: collapse; color: #c8d3de; font: 9px ui-monospace, 'Cascadia Mono', monospace; }
+.lorawan-section th,
+.lorawan-section td { padding: 7px 10px; border-top: 1px solid var(--line-soft); text-align: left; white-space: nowrap; }
+.lorawan-section thead th { color: var(--faint); border-top: 0; font-size: 8px; font-weight: 650; text-transform: uppercase; }
+.lorawan-section td:first-child { width: 100%; }
 
 .topic-explorer { height: 100%; min-height: 0; display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(270px, 0.75fr); }
 .topic-tree-pane,
