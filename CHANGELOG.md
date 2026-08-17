@@ -10,6 +10,7 @@ All notable changes to MQTTape are documented in this file.
 - Versioned downlink-history JSON export plus an in-app action to clear saved events.
 - Playwright UI smoke tests for Web Lite language and downlink-history flows plus the Electron preload bridge.
 - MQTT 5 Publish Properties capture and inspection in both the desktop app and Web Lite, including duplicate User Properties and binary Correlation Data.
+- Protocol-specific port guidance that distinguishes registered MQTT TCP ports from common Broker WebSocket defaults.
 
 ## [0.11.0] - 2026-08-17
 

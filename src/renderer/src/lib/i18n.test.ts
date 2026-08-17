@@ -46,6 +46,8 @@ describe('i18n', () => {
       .toBe('Showing 2 of 5 messages')
     expect(translate('zh-TW', 'session.filterResult', { visible: 2, total: 5 }))
       .toBe('顯示 5 則訊息中的 2 則')
+    expect(translate('zh-TW', 'connection.protocolGuide.wss'))
+      .toContain('8084 是部分 Broker 的常見預設')
   })
 
   it('localizes known validation and dynamic preset messages', () => {

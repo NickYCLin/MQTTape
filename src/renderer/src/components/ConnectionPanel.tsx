@@ -7,6 +7,7 @@ import type {
 } from '../../../shared/contracts'
 import { PlugIcon, PowerIcon } from './icons'
 import { useI18n } from '../i18n'
+import type { TranslationKey } from '../lib/i18n'
 
 interface ConnectionPanelProps {
   config: ConnectionConfig
@@ -30,6 +31,13 @@ const defaultPorts: Record<MqttProtocol, number> = {
   mqtts: 8883,
   ws: 8083,
   wss: 8084
+}
+
+const protocolGuideKeys: Record<MqttProtocol, TranslationKey> = {
+  mqtt: 'connection.protocolGuide.mqtt',
+  mqtts: 'connection.protocolGuide.mqtts',
+  ws: 'connection.protocolGuide.ws',
+  wss: 'connection.protocolGuide.wss'
 }
 
 export function ConnectionPanel({
@@ -159,6 +167,12 @@ export function ConnectionPanel({
                 onChange={(event) => update('port', Number(event.target.value))}
               />
             </label>
+          </div>
+
+          <div className="protocol-guide" role="note" aria-live="polite">
+            <strong>{t(protocolGuideKeys[config.protocol])}</strong>
+            <span>{t('connection.portGuidance')}</span>
+            {!isDesktop && <span>{t('connection.webLiteTransport')}</span>}
           </div>
 
           {(config.protocol === 'ws' || config.protocol === 'wss') && (
