@@ -3,6 +3,7 @@ import { createCaptureTrimPlan, type CaptureTrimOptions } from '../../../shared/
 import type { CaptureFile } from '../../../shared/contracts'
 import { formatBytes } from '../../../shared/message'
 import { useI18n } from '../i18n'
+import { XIcon } from './icons'
 
 interface CaptureExportDialogProps {
   capture: CaptureFile
@@ -84,139 +85,156 @@ export function CaptureExportDialog({ capture, onExport, onClose }: CaptureExpor
   }
 
   return (
-    <div className="dialog-backdrop">
+    <div className="backdrop">
       <section
-        className="replay-dialog capture-export-dialog"
+        className="dialog wide"
         role="dialog"
         aria-modal="true"
         aria-labelledby="capture-export-title"
       >
-        <div className="dialog-heading">
-          <div>
+        <header className="dialog-head">
+          <div className="dialog-title">
             <span className="eyebrow">{t('capture.eyebrow')}</span>
             <h2 id="capture-export-title">{t('capture.title')}</h2>
           </div>
-          <span className="counter-badge">
+          <span className="badge">
             {t('capture.kept', {
               selected: formatNumber(plan.messages.length),
               total: formatNumber(capture.messages.length)
             })}
           </span>
-        </div>
+          <button
+            className="btn plain icon"
+            type="button"
+            disabled={exporting}
+            aria-label={t('common.close')}
+            onClick={onClose}
+          >
+            <XIcon width={16} height={16} />
+          </button>
+        </header>
 
-        <div className="capture-summary">
-          <div><span>{t('common.broker')}</span><strong>{capture.connection.host || t('common.unknown')}</strong></div>
-          <div><span>{t('common.selected')}</span><strong>{formatMessageCount(plan.messages.length)}</strong></div>
-          <div><span>{t('common.payload')}</span><strong>{formatBytes(selectedBytes)}</strong></div>
-          <div><span>{t('capture.timeSpan')}</span><strong>{formatTimeSpan(Math.max(selectedSpan, 0))}</strong></div>
-        </div>
+        <div className="dialog-body">
+          <dl className="summary-grid">
+            <div><dt>{t('common.broker')}</dt><dd className="mono">{capture.connection.host || t('common.unknown')}</dd></div>
+            <div><dt>{t('common.selected')}</dt><dd className="mono">{formatMessageCount(plan.messages.length)}</dd></div>
+            <div><dt>{t('common.payload')}</dt><dd className="mono">{formatBytes(selectedBytes)}</dd></div>
+            <div><dt>{t('capture.timeSpan')}</dt><dd className="mono">{formatTimeSpan(Math.max(selectedSpan, 0))}</dd></div>
+          </dl>
 
-        <div className="capture-trim-options">
-          <div className="direction-options">
-            <span>{t('capture.directions')}</span>
-            <label>
-              <input
-                type="checkbox"
-                checked={includeIncoming}
-                disabled={exporting}
-                onChange={(event) => setIncludeIncoming(event.target.checked)}
-              />
-              {t('common.incoming')} <small>{formatNumber(incoming)}</small>
-            </label>
-            <label>
-              <input
-                type="checkbox"
-                checked={includeOutgoing}
-                disabled={exporting}
-                onChange={(event) => setIncludeOutgoing(event.target.checked)}
-              />
-              {t('common.outgoing')} <small>{formatNumber(outgoing)}</small>
-            </label>
-          </div>
-          <label className="capture-query-field">
-            <span>{t('capture.query')}</span>
-            <input
-              value={query}
-              disabled={exporting}
-              placeholder={t('capture.queryPlaceholder')}
-              onChange={(event) => setQuery(event.target.value)}
-            />
-          </label>
-          <div className="capture-time-range">
-            <label>
-              <span>{t('capture.startTime')}</span>
-              <input
-                type="datetime-local"
-                step="0.001"
-                min={earliestValue}
-                max={latestValue}
-                value={fromTimestamp}
-                disabled={exporting}
-                onChange={(event) => setFromTimestamp(event.target.value)}
-              />
-            </label>
-            <span className="trim-range-arrow" aria-hidden="true">→</span>
-            <label>
-              <span>{t('capture.endTime')}</span>
-              <input
-                type="datetime-local"
-                step="0.001"
-                min={earliestValue}
-                max={latestValue}
-                value={toTimestamp}
-                disabled={exporting}
-                onChange={(event) => setToTimestamp(event.target.value)}
-              />
-            </label>
-          </div>
-        </div>
-
-        {plan.messages.length > 0 && (
-          <div className="capture-trim-preview" aria-label={t('capture.preview')}>
-            <div className="capture-trim-preview-heading">
-              <span>{t('capture.firstMessages')}</span>
-              <small>{t('capture.retainedCount', { count: formatNumber(retained) })}</small>
-            </div>
-            {plan.messages.slice(0, 5).map((message) => (
-              <div className="capture-trim-preview-row" key={message.id}>
-                <i className={message.direction}>{message.direction === 'incoming' ? 'IN' : 'OUT'}</i>
-                <strong>{message.topic}</strong>
-                <time>{formatTime(message.timestamp)}</time>
+          <section className="subpanel">
+            <div className="trim-row">
+              <fieldset className="option-group">
+                <legend>{t('capture.directions')}</legend>
+                <label className="checkbox">
+                  <input
+                    type="checkbox"
+                    checked={includeIncoming}
+                    disabled={exporting}
+                    onChange={(event) => setIncludeIncoming(event.target.checked)}
+                  />
+                  <span>{t('common.incoming')}</span>
+                  <small className="tag">{formatNumber(incoming)}</small>
+                </label>
+                <label className="checkbox">
+                  <input
+                    type="checkbox"
+                    checked={includeOutgoing}
+                    disabled={exporting}
+                    onChange={(event) => setIncludeOutgoing(event.target.checked)}
+                  />
+                  <span>{t('common.outgoing')}</span>
+                  <small className="tag">{formatNumber(outgoing)}</small>
+                </label>
+              </fieldset>
+              <label className="field">
+                <span>{t('capture.query')}</span>
+                <input
+                  value={query}
+                  disabled={exporting}
+                  placeholder={t('capture.queryPlaceholder')}
+                  onChange={(event) => setQuery(event.target.value)}
+                />
+              </label>
+              <div className="range-row">
+                <label className="field">
+                  <span>{t('capture.startTime')}</span>
+                  <input
+                    className="mono"
+                    type="datetime-local"
+                    step="0.001"
+                    min={earliestValue}
+                    max={latestValue}
+                    value={fromTimestamp}
+                    disabled={exporting}
+                    onChange={(event) => setFromTimestamp(event.target.value)}
+                  />
+                </label>
+                <span className="arrow" aria-hidden="true">→</span>
+                <label className="field">
+                  <span>{t('capture.endTime')}</span>
+                  <input
+                    className="mono"
+                    type="datetime-local"
+                    step="0.001"
+                    min={earliestValue}
+                    max={latestValue}
+                    value={toTimestamp}
+                    disabled={exporting}
+                    onChange={(event) => setToTimestamp(event.target.value)}
+                  />
+                </label>
               </div>
-            ))}
-            {plan.messages.length > 5 && (
-              <small>{t('common.moreMessages', { count: formatNumber(plan.messages.length - 5) })}</small>
-            )}
-          </div>
-        )}
+            </div>
+          </section>
 
-        <div className={`replay-warning ${plan.error || plan.messages.length === 0 ? 'invalid' : ''}`}>
-          <strong>
-            {plan.error ? translateMessage(plan.error) : plan.messages.length === 0
-              ? t('capture.noMatch')
-              : t('capture.ready', { count: formatMessageCount(plan.messages.length) })}
-          </strong>
-          <span>
-            {t('capture.privacy')}
-          </span>
+          {plan.messages.length > 0 && (
+            <section className="subpanel" aria-label={t('capture.preview')}>
+              <div className="subpanel-head">
+                <h3>{t('capture.firstMessages')}</h3>
+                <span className="badge">{t('capture.retainedCount', { count: formatNumber(retained) })}</span>
+              </div>
+              <ul className="trim-preview">
+                {plan.messages.slice(0, 5).map((message) => (
+                  <li key={message.id}>
+                    <span className={`dir ${message.direction}`}>{message.direction === 'incoming' ? 'IN' : 'OUT'}</span>
+                    <strong className="mono">{message.topic}</strong>
+                    <time className="mono">{formatTime(message.timestamp)}</time>
+                  </li>
+                ))}
+                {plan.messages.length > 5 && (
+                  <li className="hint">{t('common.moreMessages', { count: formatNumber(plan.messages.length - 5) })}</li>
+                )}
+              </ul>
+            </section>
+          )}
+
+          <div className={`notice ${plan.error || plan.messages.length === 0 ? 'error' : 'warn'}`}>
+            <strong>
+              {plan.error ? translateMessage(plan.error) : plan.messages.length === 0
+                ? t('capture.noMatch')
+                : t('capture.ready', { count: formatMessageCount(plan.messages.length) })}
+            </strong>
+            <span>{t('capture.privacy')}</span>
+          </div>
         </div>
 
-        <div className="dialog-actions">
-          <button className="secondary-button" type="button" disabled={exporting} onClick={reset}>
+        <footer className="dialog-actions">
+          <button className="btn plain" type="button" disabled={exporting} onClick={reset}>
             {t('capture.resetFilters')}
           </button>
-          <button className="secondary-button" type="button" disabled={exporting} onClick={onClose}>
+          <button className="btn ghost" type="button" disabled={exporting} onClick={onClose}>
             {t('common.cancel')}
           </button>
           <button
-            className="primary-button"
+            className="btn primary"
             type="button"
             disabled={exporting || Boolean(plan.error) || plan.messages.length === 0}
             onClick={() => void exportCapture()}
           >
             {t(exporting ? 'capture.exporting' : 'capture.exportAction')}
           </button>
-        </div>
+        </footer>
       </section>
     </div>
   )

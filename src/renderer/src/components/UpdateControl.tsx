@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { AppUpdateStatus } from '../../../shared/contracts'
 import { useI18n } from '../i18n'
-import { DownloadIcon } from './icons'
+import { DownloadIcon, RefreshIcon } from './icons'
 
 const RELEASES_URL = 'https://github.com/NickYCLin/MQTTape/releases/latest'
 
@@ -32,13 +32,13 @@ export function UpdateControl() {
   if (status.mode === 'manual') {
     return (
       <a
-        className="update-control manual"
+        className="btn ghost sm update-control"
         href={RELEASES_URL}
         target="_blank"
         rel="noreferrer"
         title={t(status.reason === 'portable' ? 'update.manualPortable' : 'update.manual')}
       >
-        <DownloadIcon />
+        <DownloadIcon width={15} height={15} />
         <span>{t(status.reason === 'portable' ? 'update.manualPortable' : 'update.manual')}</span>
       </a>
     )
@@ -57,6 +57,11 @@ export function UpdateControl() {
     }
   })()
   const busy = ['checking', 'available', 'downloading'].includes(status.state)
+  // Downloading is the only state where something is actually being fetched;
+  // every other state is a check or a restart.
+  const Icon = status.state === 'available' || status.state === 'downloading'
+    ? DownloadIcon
+    : RefreshIcon
 
   const handleClick = async (): Promise<void> => {
     const bridge = window.mqttape
@@ -70,7 +75,7 @@ export function UpdateControl() {
 
   return (
     <button
-      className={`update-control ${status.state}`}
+      className={`btn ghost sm update-control ${status.state}`}
       type="button"
       disabled={busy}
       aria-live="polite"
@@ -78,7 +83,7 @@ export function UpdateControl() {
       title={label}
       onClick={() => void handleClick()}
     >
-      <DownloadIcon />
+      <Icon width={15} height={15} />
       <span>{label}</span>
     </button>
   )

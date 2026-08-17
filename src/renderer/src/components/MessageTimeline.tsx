@@ -24,8 +24,8 @@ export function MessageTimeline({ messages }: MessageTimelineProps) {
 
   if (messages.length === 0) {
     return (
-      <div className="timeline-empty">
-        <div className="signal-visual" aria-hidden="true">
+      <div className="empty">
+        <div className="signal" aria-hidden="true">
           <i />
           <i />
           <i />
@@ -37,34 +37,36 @@ export function MessageTimeline({ messages }: MessageTimelineProps) {
   }
 
   return (
-    <div className="message-list" role="log" aria-live="polite">
+    <div className="timeline" role="log" aria-live="polite">
       {messages.map((message) => {
         const isExpanded = expanded.has(message.id)
         return (
           <article
-            className={`message-row ${message.direction} ${isExpanded ? 'expanded' : ''}`}
+            className={`msg ${message.direction} ${isExpanded ? 'expanded' : ''}`}
             key={message.id}
           >
-            <button className="message-summary" type="button" onClick={() => toggle(message.id)}>
-              <span className="direction-marker">{message.direction === 'incoming' ? 'IN' : 'OUT'}</span>
-              <time>{formatTime(message.timestamp, true)}</time>
-              <span className="message-topic" title={message.topic}>{message.topic}</span>
-              <span className="payload-preview">
+            <button className="msg-summary" type="button" onClick={() => toggle(message.id)}>
+              <span className="dir">{message.direction === 'incoming' ? 'IN' : 'OUT'}</span>
+              <time className="msg-time">{formatTime(message.timestamp, true)}</time>
+              <span className="msg-topic" title={message.topic}>{message.topic}</span>
+              <span className="msg-preview">
                 {isProbablyBinaryText(message.payloadText) ? t('timeline.binaryPayload') : message.payloadText || '∅'}
               </span>
-              <span className="message-meta">Q{message.qos}</span>
-              {message.retain && <span className="message-meta retained">R</span>}
-              <span className="message-size">{formatBytes(message.size)}</span>
-              <ChevronIcon className="chevron" width={15} height={15} />
+              <span className="msg-flags">
+                <span className="tag">Q{message.qos}</span>
+                {message.retain && <span className="tag accent">R</span>}
+              </span>
+              <span className="msg-size">{formatBytes(message.size)}</span>
+              <ChevronIcon className="chevron" width={16} height={16} />
             </button>
             {isExpanded && (
-              <div className="message-detail">
-                <div className="detail-meta">
-                  <span>{t('common.topic')} <strong>{message.topic}</strong></span>
-                  <span>QoS <strong>{message.qos}</strong></span>
-                  <span>{t('common.retained')} <strong>{t(message.retain ? 'common.yes' : 'common.no')}</strong></span>
-                  <span>{t('common.duplicate')} <strong>{t(message.duplicate ? 'common.yes' : 'common.no')}</strong></span>
-                </div>
+              <div className="msg-detail">
+                <dl className="detail-meta">
+                  <div><dt>{t('common.topic')}</dt><dd className="mono">{message.topic}</dd></div>
+                  <div><dt>QoS</dt><dd className="mono">{message.qos}</dd></div>
+                  <div><dt>{t('common.retained')}</dt><dd className="mono">{t(message.retain ? 'common.yes' : 'common.no')}</dd></div>
+                  <div><dt>{t('common.duplicate')}</dt><dd className="mono">{t(message.duplicate ? 'common.yes' : 'common.no')}</dd></div>
+                </dl>
                 <PayloadInspector message={message} />
               </div>
             )}

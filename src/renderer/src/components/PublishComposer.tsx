@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import type { MqttQos } from '../../../shared/contracts'
-import { SendIcon } from './icons'
+import { DownlinkIcon, SendIcon } from './icons'
 import { useI18n } from '../i18n'
 import { LoRaWanDownlinkDialog } from './LoRaWanDownlinkDialog'
 
@@ -24,15 +24,14 @@ export function PublishComposer({ connected, onPublish }: PublishComposerProps) 
 
   return (
     <>
-      <form className="publish-composer" onSubmit={submit}>
-        <div className="publish-heading">
-          <div className="publish-heading-title">
-            <span className="eyebrow">{t('publish.eyebrow')}</span>
-            <button type="button" onClick={() => setShowLoRaWanDownlink(true)}>
+      <form className="publish" onSubmit={submit}>
+        <div className="publish-head">
+          <h2>{t('publish.eyebrow')}</h2>
+          <div className="publish-options">
+            <button className="btn plain sm" type="button" onClick={() => setShowLoRaWanDownlink(true)}>
+              <DownlinkIcon width={14} height={14} />
               {t('publish.lorawanDownlink')}
             </button>
-          </div>
-          <div className="publish-options">
             <select
               aria-label={t('publish.qos')}
               value={qos}
@@ -43,19 +42,20 @@ export function PublishComposer({ connected, onPublish }: PublishComposerProps) 
               <option value={1}>QoS 1</option>
               <option value={2}>QoS 2</option>
             </select>
-            <label className="retain-toggle">
+            <label className="checkbox">
               <input
                 type="checkbox"
                 checked={retain}
                 disabled={!connected}
                 onChange={(event) => setRetain(event.target.checked)}
               />
-              {t('publish.retain')}
+              <span>{t('publish.retain')}</span>
             </label>
           </div>
         </div>
         <div className="publish-body">
           <input
+            className="mono"
             aria-label={t('publish.topic')}
             value={topic}
             disabled={!connected}
@@ -64,6 +64,7 @@ export function PublishComposer({ connected, onPublish }: PublishComposerProps) 
             onChange={(event) => setTopic(event.target.value)}
           />
           <textarea
+            className="mono"
             aria-label={t('publish.payload')}
             value={payload}
             disabled={!connected}
@@ -71,8 +72,8 @@ export function PublishComposer({ connected, onPublish }: PublishComposerProps) 
             spellCheck={false}
             onChange={(event) => setPayload(event.target.value)}
           />
-          <button type="submit" disabled={!connected || !topic.trim()}>
-            <SendIcon />
+          <button className="btn primary" type="submit" disabled={!connected || !topic.trim()}>
+            <SendIcon width={16} height={16} />
             {t('publish.action')}
           </button>
         </div>
