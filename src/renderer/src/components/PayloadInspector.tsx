@@ -12,19 +12,26 @@ import {
   prettyPayload,
   type PayloadKind
 } from '../../../shared/message'
+import { inspectCborPayload, isCborContentType } from '../../../shared/cbor'
 import { countMqttMessageProperties } from '../../../shared/mqtt-properties'
 import { DownloadIcon } from './icons'
+import { PayloadTree } from './PayloadTree'
 import { useI18n } from '../i18n'
 
-type PayloadViewMode = 'lorawan' | 'text' | 'json' | 'hex'
+type PayloadViewMode = 'lorawan' | 'cbor' | 'text' | 'json' | 'hex'
 const MAX_PREVIEW_BYTES = 256 * 1024
 
 interface PayloadInspectorProps {
   message: MqttMessageRecord
 }
 
-function initialMode(kind: PayloadKind, hasLoRaWanInspection: boolean): PayloadViewMode {
+function initialMode(
+  kind: PayloadKind,
+  hasLoRaWanInspection: boolean,
+  hasCborInspection: boolean
+): PayloadViewMode {
   if (hasLoRaWanInspection) return 'lorawan'
+  if (hasCborInspection) return 'cbor'
   if (kind === 'json') return 'json'
   if (kind === 'binary') return 'hex'
   return 'text'
@@ -303,8 +310,15 @@ export function PayloadInspector({ message }: PayloadInspectorProps) {
     () => inspectLoRaWanUplink(message.payloadText),
     [message.payloadText]
   )
+  const cborInspection = useMemo(
+    () => kind === 'binary' || isCborContentType(message.properties?.contentType)
+      ? inspectCborPayload(message.payloadBase64, message.properties?.contentType)
+      : inspectCborPayload('', undefined),
+    [kind, message.payloadBase64, message.properties?.contentType]
+  )
+  const hasCborInspection = cborInspection.status !== 'not-detected'
   const [mode, setMode] = useState<PayloadViewMode>(
-    () => initialMode(kind, loRaWanInspection !== null)
+    () => initialMode(kind, loRaWanInspection !== null, hasCborInspection)
   )
   const payloadBytes = decodePayloadBytes(message.payloadBase64)
   const previewTruncated = payloadBytes.byteLength > MAX_PREVIEW_BYTES
@@ -340,6 +354,17 @@ export function PayloadInspector({ message }: PayloadInspectorProps) {
               onClick={() => setMode('lorawan')}
             >
               LoRaWAN
+            </button>
+          )}
+          {hasCborInspection && (
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mode === 'cbor'}
+              className={mode === 'cbor' ? 'active' : ''}
+              onClick={() => setMode('cbor')}
+            >
+              CBOR
             </button>
           )}
           <button
@@ -382,6 +407,40 @@ export function PayloadInspector({ message }: PayloadInspectorProps) {
       </div>
       {mode === 'lorawan' && loRaWanInspection
         ? <LoRaWanInspector message={message} inspection={loRaWanInspection} />
+        : mode === 'cbor' && hasCborInspection
+          ? (
+              <div className="structured-payload" role="tabpanel">
+                <div className="structured-payload-head">
+                  <div>
+                    <span className="eyebrow">{t('payload.decoder')}</span>
+                    <h3>CBOR</h3>
+                    <p>{t('payload.cborHelp')}</p>
+                  </div>
+                  <div className="structured-payload-tags">
+                    <span className="tag accent">
+                      {t(cborInspection.explicit
+                        ? 'payload.decoderContentType'
+                        : 'payload.decoderDetected')}
+                    </span>
+                    {cborInspection.valueCount !== undefined && cborInspection.valueCount > 1 && (
+                      <span className="tag">
+                        {t('payload.cborValues', { count: formatNumber(cborInspection.valueCount) })}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                {cborInspection.status === 'decoded' && cborInspection.tree
+                  ? <PayloadTree tree={cborInspection.tree} />
+                  : (
+                      <div className="structured-payload-error" role="alert">
+                        <strong>{t(cborInspection.status === 'too-large'
+                          ? 'payload.decoderTooLarge'
+                          : 'payload.decoderInvalid', { format: 'CBOR' })}</strong>
+                        {cborInspection.error && <code>{cborInspection.error}</code>}
+                      </div>
+                    )}
+              </div>
+            )
         : (
             <>
               {kind === 'binary' && mode === 'text' && (
