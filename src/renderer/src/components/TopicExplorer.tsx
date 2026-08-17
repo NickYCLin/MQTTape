@@ -24,28 +24,30 @@ function TopicBranch({
   const { t, formatNumber, formatTime } = useI18n()
   const segment = node.segment || t(node.topic ? 'topics.emptyLevel' : 'topics.leadingSlash')
   return (
-    <li className="topic-branch">
+    <li className="tree-branch">
       <button
-        className="topic-node"
+        className="tree-node"
         type="button"
         disabled={!node.topic}
         title={node.topic || t('topics.leadingSlashTitle')}
         onClick={() => onInspectTopic(node.topic)}
       >
-        <span className="topic-segment">{segment}</span>
-        <span className="topic-direction-counts">
-          <i className="incoming-count">{node.incomingCount} IN</i>
-          <i className="outgoing-count">{node.outgoingCount} OUT</i>
+        <span className="tree-row">
+          <span className="tree-segment mono">{segment}</span>
+          <span className="tree-counts">
+            <span className="tag in">{node.incomingCount} IN</span>
+            <span className="tag out">{node.outgoingCount} OUT</span>
+            {node.retainedMessage && <span className="tag accent">{t('topics.retainedBadge')}</span>}
+          </span>
+          <strong className="tree-total mono">{formatNumber(node.totalCount)}</strong>
         </span>
-        {node.retainedMessage && <span className="retained-badge">{t('topics.retainedBadge')}</span>}
-        <strong>{formatNumber(node.totalCount)}</strong>
+        <span className="tree-preview">
+          <span className="mono">{node.latestMessage.payloadText || t('common.emptyPayload')}</span>
+          <time className="mono">{formatTime(node.latestMessage.timestamp)}</time>
+        </span>
       </button>
-      <div className="topic-node-preview">
-        <span>{node.latestMessage.payloadText || t('common.emptyPayload')}</span>
-        <time>{formatTime(node.latestMessage.timestamp)}</time>
-      </div>
       {node.children.length > 0 && (
-        <ul className="topic-children">
+        <ul className="tree-children">
           {node.children.map((child) => (
             <TopicBranch key={`${node.topic}/${child.segment}`} node={child} onInspectTopic={onInspectTopic} />
           ))}
@@ -69,8 +71,8 @@ export function TopicExplorer({ messages, query, onInspectTopic }: TopicExplorer
 
   if (messages.length === 0) {
     return (
-      <div className="timeline-empty">
-        <div className="topic-empty-icon" aria-hidden="true">/#</div>
+      <div className="empty">
+        <div className="empty-glyph" aria-hidden="true">/#</div>
         <h3>{t('topics.emptyTitle')}</h3>
         <p>{t('topics.emptyHelp')}</p>
       </div>
@@ -78,37 +80,29 @@ export function TopicExplorer({ messages, query, onInspectTopic }: TopicExplorer
   }
 
   return (
-    <div className="topic-explorer">
-      <section className="topic-tree-pane" aria-labelledby="topic-tree-title">
-        <div className="topic-pane-heading">
-          <div>
-            <span className="eyebrow">{t('topics.sessionDerived')}</span>
-            <h3 id="topic-tree-title">{t('topics.observed')}</h3>
-          </div>
-          <span className="counter-badge">{t('topics.count', { count: formatNumber(tree.uniqueTopics) })}</span>
+    <div className="topics">
+      <section className="topics-pane" aria-labelledby="topic-tree-title">
+        <div className="pane-head">
+          <h3 id="topic-tree-title">{t('topics.observed')}</h3>
+          <span className="badge">{t('topics.count', { count: formatNumber(tree.uniqueTopics) })}</span>
         </div>
         {visibleRoots.length > 0 ? (
-          <ul className="topic-tree">
+          <ul className="tree">
             {visibleRoots.map((root, index) => (
               <TopicBranch key={`${root.segment}-${index}`} node={root} onInspectTopic={onInspectTopic} />
             ))}
           </ul>
         ) : (
-          <div className="topic-pane-empty">{t('topics.noMatch', { query })}</div>
+          <div className="placeholder">{t('topics.noMatch', { query })}</div>
         )}
       </section>
 
       <aside className="retained-pane" aria-labelledby="retained-title">
-        <div className="topic-pane-heading">
-          <div>
-            <span className="eyebrow">{t('topics.snapshot')}</span>
-            <h3 id="retained-title">{t('topics.retainedValues')}</h3>
-          </div>
-          <span className="counter-badge">{formatNumber(retainedSnapshots.length)}</span>
+        <div className="pane-head">
+          <h3 id="retained-title">{t('topics.retainedValues')}</h3>
+          <span className="badge">{formatNumber(retainedSnapshots.length)}</span>
         </div>
-        <p className="retained-note">
-          {t('topics.retainedHelp')}
-        </p>
+        <p className="hint">{t('topics.retainedHelp')}</p>
         <div className="retained-list">
           {retainedSnapshots.map(({ topic, message }) => (
             <button
@@ -117,13 +111,13 @@ export function TopicExplorer({ messages, query, onInspectTopic }: TopicExplorer
               key={topic}
               onClick={() => onInspectTopic(topic)}
             >
-              <strong>{topic}</strong>
-              <span>{message.payloadText || t('common.emptyPayload')}</span>
+              <strong className="mono">{topic}</strong>
+              <span className="mono">{message.payloadText || t('common.emptyPayload')}</span>
               <small>QoS {message.qos} · {formatBytes(message.size)} · {formatTime(message.timestamp)}</small>
             </button>
           ))}
           {retainedSnapshots.length === 0 && (
-            <div className="retained-empty">{t('topics.noRetained')}</div>
+            <div className="placeholder">{t('topics.noRetained')}</div>
           )}
         </div>
       </aside>

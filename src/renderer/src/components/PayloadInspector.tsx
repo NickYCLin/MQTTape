@@ -132,33 +132,35 @@ function LoRaWanInspector({
   ].filter((entry): entry is [string, string] => typeof entry[1] === 'string')
 
   return (
-    <div className="lorawan-inspector" role="tabpanel">
-      <div className="lorawan-heading">
+    <div className="lorawan" role="tabpanel">
+      <div className="lorawan-head">
         <div>
           <span className="eyebrow">{t('lorawan.detected')}</span>
           <h3>{t(`lorawan.provider.${inspection.provider}`)}</h3>
         </div>
-        <span className="lorawan-badge">LoRaWAN</span>
+        <span className="tag accent">LoRaWAN</span>
       </div>
 
-      <dl className="lorawan-metadata">
+      <dl className="lorawan-meta">
         {metadata.map(([label, value]) => (
           <div key={label}>
             <dt>{label}</dt>
-            <dd title={value}>{value}</dd>
+            <dd className="mono" title={value}>{value}</dd>
           </div>
         ))}
       </dl>
 
       {inspection.decodedPayload !== undefined && (
-        <section className="lorawan-section">
-          <h4>{t('lorawan.decodedPayload')}</h4>
-          <pre>{JSON.stringify(inspection.decodedPayload, null, 2)}</pre>
+        <section className="lorawan-block">
+          <div className="lorawan-block-head">
+            <h4>{t('lorawan.decodedPayload')}</h4>
+          </div>
+          <pre className="code">{JSON.stringify(inspection.decodedPayload, null, 2)}</pre>
         </section>
       )}
 
-      <section className="lorawan-section">
-        <div className="lorawan-section-heading">
+      <section className="lorawan-block">
+        <div className="lorawan-block-head">
           <div>
             <h4>{t('lorawan.framePayload')}</h4>
             {frameBase64 !== undefined && (
@@ -166,9 +168,10 @@ function LoRaWanInspector({
             )}
           </div>
           {frameBase64 !== undefined && frameKind !== undefined && (
-            <div className="payload-inspector-actions">
-              <span className={`payload-kind ${frameKind}`}>{t(`payload.kind.${frameKind}`)}</span>
+            <div className="inspector-actions">
+              <span className={`kind ${frameKind}`}>{t(`payload.kind.${frameKind}`)}</span>
               <button
+                className="btn ghost sm"
                 type="button"
                 onClick={() => downloadBase64(
                   frameBase64,
@@ -183,13 +186,15 @@ function LoRaWanInspector({
         </div>
         {frameBase64 === undefined
           ? <p className="lorawan-empty">{t('lorawan.noFramePayload')}</p>
-          : <pre className={frameKind === 'binary' ? 'hex-dump' : ''}>{frameContent || t('common.emptyPayload')}</pre>}
+          : <pre className={`code ${frameKind === 'binary' ? 'hex' : ''}`}>{frameContent || t('common.emptyPayload')}</pre>}
       </section>
 
       {inspection.gateways.length > 0 && (
-        <section className="lorawan-section">
-          <h4>{t('lorawan.gatewayReception', { count: formatNumber(inspection.gateways.length) })}</h4>
-          <div className="lorawan-table-scroll">
+        <section className="lorawan-block">
+          <div className="lorawan-block-head">
+            <h4>{t('lorawan.gatewayReception', { count: formatNumber(inspection.gateways.length) })}</h4>
+          </div>
+          <div className="table-scroll">
             <table>
               <thead>
                 <tr>
@@ -246,9 +251,9 @@ export function PayloadInspector({ message }: PayloadInspectorProps) {
   }
 
   return (
-    <div className="payload-inspector">
-      <div className="payload-inspector-toolbar">
-        <div className="payload-view-tabs" role="tablist" aria-label={t('payload.view')}>
+    <div className="inspector">
+      <div className="inspector-bar">
+        <div className="segmented" role="tablist" aria-label={t('payload.view')}>
           {loRaWanInspection && (
             <button
               type="button"
@@ -290,9 +295,9 @@ export function PayloadInspector({ message }: PayloadInspectorProps) {
             {t('payload.hex')}
           </button>
         </div>
-        <div className="payload-inspector-actions">
-          <span className={`payload-kind ${kind}`}>{t(`payload.kind.${kind}`)}</span>
-          <button type="button" onClick={download}>
+        <div className="inspector-actions">
+          <span className={`kind ${kind}`}>{t(`payload.kind.${kind}`)}</span>
+          <button className="btn ghost sm" type="button" onClick={download}>
             <DownloadIcon width={14} height={14} />
             {t('payload.raw')}
           </button>
@@ -303,16 +308,12 @@ export function PayloadInspector({ message }: PayloadInspectorProps) {
         : (
             <>
               {kind === 'binary' && mode === 'text' && (
-                <p className="payload-inspector-note">
-                  {t('payload.binaryWarning')}
-                </p>
+                <p className="note">{t('payload.binaryWarning')}</p>
               )}
               {previewTruncated && mode !== 'hex' && (
-                <p className="payload-inspector-note">
-                  {t('payload.previewLimit')}
-                </p>
+                <p className="note">{t('payload.previewLimit')}</p>
               )}
-              <pre className={mode === 'hex' ? 'hex-dump' : ''} role="tabpanel">
+              <pre className={`code ${mode === 'hex' ? 'hex' : ''}`} role="tabpanel">
                 {content || t('common.emptyPayload')}
               </pre>
             </>

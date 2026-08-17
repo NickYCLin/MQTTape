@@ -104,198 +104,206 @@ export function LoRaWanDownlinkDialog({
   }
 
   return (
-    <div className="dialog-backdrop">
+    <div className="backdrop">
       <form
-        className="replay-dialog lorawan-downlink-dialog"
+        className="dialog wide"
         role="dialog"
         aria-modal="true"
         aria-labelledby="lorawan-downlink-title"
         onSubmit={submit}
       >
-        <div className="dialog-heading">
-          <div>
+        <header className="dialog-head">
+          <div className="dialog-title">
             <span className="eyebrow">{t('lorawan.downlink.eyebrow')}</span>
             <h2 id="lorawan-downlink-title">{t('lorawan.downlink.title')}</h2>
           </div>
-          <button type="button" aria-label={t('common.close')} onClick={onClose}>
-            <XIcon />
+          <button className="btn plain icon" type="button" aria-label={t('common.close')} onClick={onClose}>
+            <XIcon width={16} height={16} />
           </button>
-        </div>
+        </header>
 
-        <p className="lorawan-downlink-help">{t('lorawan.downlink.help')}</p>
+        <div className="dialog-body">
+          <p className="hint">{t('lorawan.downlink.help')}</p>
 
-        <div className="lorawan-downlink-fields">
-          <label>
-            <span>{t('lorawan.downlink.provider')}</span>
-            <select
-              value={provider}
-              onChange={(event) => {
-                setProvider(event.target.value as LoRaWanDownlinkProvider)
-                setAttempted(false)
-              }}
-            >
-              <option value="the-things-stack">The Things Stack</option>
-              <option value="chirpstack">ChirpStack</option>
-            </select>
-          </label>
-          <label>
-            <span>{t('lorawan.downlink.applicationId')}</span>
-            <input
-              value={applicationId}
-              placeholder={provider === 'the-things-stack' ? 'field-station' : 'Application UUID'}
-              spellCheck={false}
-              onChange={(event) => setApplicationId(event.target.value)}
-            />
-          </label>
-          {provider === 'the-things-stack' && (
-            <label>
-              <span>{t('lorawan.downlink.tenantId')}</span>
-              <input
-                value={tenantId}
-                placeholder={t('lorawan.downlink.tenantPlaceholder')}
-                spellCheck={false}
-                onChange={(event) => setTenantId(event.target.value)}
-              />
-            </label>
-          )}
-          <label>
-            <span>{t(provider === 'the-things-stack'
-              ? 'lorawan.downlink.deviceId'
-              : 'lorawan.downlink.devEui')}</span>
-            <input
-              value={deviceId}
-              placeholder={provider === 'the-things-stack' ? 'weather-node' : '0102030405060708'}
-              spellCheck={false}
-              onChange={(event) => setDeviceId(event.target.value)}
-            />
-          </label>
-          <label>
-            <span>FPort</span>
-            <input
-              type="number"
-              min={1}
-              max={provider === 'the-things-stack' ? 233 : 255}
-              step={1}
-              value={fPort}
-              onChange={(event) => setFPort(event.target.value)}
-            />
-          </label>
-          {provider === 'the-things-stack' && (
-            <>
-              <label>
-                <span>{t('lorawan.downlink.operation')}</span>
-                <select
-                  value={operation}
-                  onChange={(event) => setOperation(event.target.value as TheThingsStackDownlinkOperation)}
-                >
-                  <option value="push">{t('lorawan.downlink.operation.push')}</option>
-                  <option value="replace">{t('lorawan.downlink.operation.replace')}</option>
-                </select>
-              </label>
-              <label>
-                <span>{t('lorawan.downlink.priority')}</span>
-                <select
-                  value={priority}
-                  onChange={(event) => setPriority(event.target.value as TheThingsStackDownlinkPriority)}
-                >
-                  {priorities.map((value) => <option key={value} value={value}>{value}</option>)}
-                </select>
-              </label>
-            </>
-          )}
-          <label>
-            <span>{t('publish.qos')}</span>
-            <select value={qos} onChange={(event) => setQos(Number(event.target.value) as MqttQos)}>
-              <option value={0}>QoS 0</option>
-              <option value={1}>QoS 1</option>
-              <option value={2}>QoS 2</option>
-            </select>
-          </label>
-          <label className="lorawan-downlink-confirmed">
-            <input
-              type="checkbox"
-              checked={confirmed}
-              onChange={(event) => setConfirmed(event.target.checked)}
-            />
-            <span>{t('lorawan.downlink.confirmed')}</span>
-          </label>
-        </div>
-
-        {provider === 'the-things-stack' && operation === 'replace' && (
-          <p className="replay-warning">{t('lorawan.downlink.replaceWarning')}</p>
-        )}
-
-        <section className="lorawan-downlink-payload">
-          <div className="lorawan-downlink-payload-heading">
-            <label>
-              <span>{t('lorawan.downlink.payloadFormat')}</span>
+          <div className="downlink-fields">
+            <label className="field">
+              <span>{t('lorawan.downlink.provider')}</span>
               <select
-                value={payloadFormat}
+                value={provider}
                 onChange={(event) => {
-                  setPayloadFormat(event.target.value as LoRaWanDownlinkPayloadFormat)
-                  setPayload('')
+                  setProvider(event.target.value as LoRaWanDownlinkProvider)
                   setAttempted(false)
                 }}
               >
-                <option value="text">{t('lorawan.downlink.format.text')}</option>
-                <option value="hex">{t('lorawan.downlink.format.hex')}</option>
-                <option value="base64">Base64</option>
-                <option value="json">{t('lorawan.downlink.format.json')}</option>
+                <option value="the-things-stack">The Things Stack</option>
+                <option value="chirpstack">ChirpStack</option>
               </select>
             </label>
-            <small>{payloadFormat === 'json'
-              ? t('lorawan.downlink.formatterNote')
-              : t('lorawan.downlink.encodingNote')}</small>
+            <label className="field">
+              <span>{t('lorawan.downlink.applicationId')}</span>
+              <input
+                className="mono"
+                value={applicationId}
+                placeholder={provider === 'the-things-stack' ? 'field-station' : 'Application UUID'}
+                spellCheck={false}
+                onChange={(event) => setApplicationId(event.target.value)}
+              />
+            </label>
+            {provider === 'the-things-stack' && (
+              <label className="field">
+                <span>{t('lorawan.downlink.tenantId')}</span>
+                <input
+                  className="mono"
+                  value={tenantId}
+                  placeholder={t('lorawan.downlink.tenantPlaceholder')}
+                  spellCheck={false}
+                  onChange={(event) => setTenantId(event.target.value)}
+                />
+              </label>
+            )}
+            <label className="field">
+              <span>{t(provider === 'the-things-stack'
+                ? 'lorawan.downlink.deviceId'
+                : 'lorawan.downlink.devEui')}</span>
+              <input
+                className="mono"
+                value={deviceId}
+                placeholder={provider === 'the-things-stack' ? 'weather-node' : '0102030405060708'}
+                spellCheck={false}
+                onChange={(event) => setDeviceId(event.target.value)}
+              />
+            </label>
+            <label className="field">
+              <span>FPort</span>
+              <input
+                className="mono"
+                type="number"
+                min={1}
+                max={provider === 'the-things-stack' ? 233 : 255}
+                step={1}
+                value={fPort}
+                onChange={(event) => setFPort(event.target.value)}
+              />
+            </label>
+            {provider === 'the-things-stack' && (
+              <>
+                <label className="field">
+                  <span>{t('lorawan.downlink.operation')}</span>
+                  <select
+                    value={operation}
+                    onChange={(event) => setOperation(event.target.value as TheThingsStackDownlinkOperation)}
+                  >
+                    <option value="push">{t('lorawan.downlink.operation.push')}</option>
+                    <option value="replace">{t('lorawan.downlink.operation.replace')}</option>
+                  </select>
+                </label>
+                <label className="field">
+                  <span>{t('lorawan.downlink.priority')}</span>
+                  <select
+                    value={priority}
+                    onChange={(event) => setPriority(event.target.value as TheThingsStackDownlinkPriority)}
+                  >
+                    {priorities.map((value) => <option key={value} value={value}>{value}</option>)}
+                  </select>
+                </label>
+              </>
+            )}
+            <label className="field">
+              <span>{t('publish.qos')}</span>
+              <select value={qos} onChange={(event) => setQos(Number(event.target.value) as MqttQos)}>
+                <option value={0}>QoS 0</option>
+                <option value={1}>QoS 1</option>
+                <option value={2}>QoS 2</option>
+              </select>
+            </label>
+            <label className="checkbox aligned">
+              <input
+                type="checkbox"
+                checked={confirmed}
+                onChange={(event) => setConfirmed(event.target.checked)}
+              />
+              <span>{t('lorawan.downlink.confirmed')}</span>
+            </label>
           </div>
-          <textarea
-            aria-label={t('lorawan.downlink.payload')}
-            value={payload}
-            placeholder={t(`lorawan.downlink.payloadPlaceholder.${payloadFormat}`)}
-            spellCheck={false}
-            onChange={(event) => setPayload(event.target.value)}
-          />
-        </section>
 
-        {result.ok ? (
-          <section className="lorawan-downlink-preview">
-            <div className="lorawan-downlink-preview-heading">
-              <div>
-                <span className="eyebrow">{t('lorawan.downlink.preview')}</span>
-                <strong>{t('lorawan.downlink.generated')}</strong>
-              </div>
-              {result.publication.framePayloadBytes !== undefined && (
-                <small>{t('lorawan.downlink.frameSize', {
-                  count: formatNumber(result.publication.framePayloadBytes)
-                })}</small>
-              )}
+          {provider === 'the-things-stack' && operation === 'replace' && (
+            <div className="notice warn">
+              <span>{t('lorawan.downlink.replaceWarning')}</span>
             </div>
-            <label>
-              <span>{t('lorawan.downlink.generatedTopic')}</span>
-              <code>{result.publication.topic}</code>
-            </label>
-            <label>
-              <span>{t('lorawan.downlink.generatedPayload')}</span>
-              <pre>{result.publication.payload}</pre>
-            </label>
+          )}
+
+          <section className="subpanel">
+            <div className="subpanel-head">
+              <label className="field compact">
+                <span>{t('lorawan.downlink.payloadFormat')}</span>
+                <select
+                  value={payloadFormat}
+                  onChange={(event) => {
+                    setPayloadFormat(event.target.value as LoRaWanDownlinkPayloadFormat)
+                    setPayload('')
+                    setAttempted(false)
+                  }}
+                >
+                  <option value="text">{t('lorawan.downlink.format.text')}</option>
+                  <option value="hex">{t('lorawan.downlink.format.hex')}</option>
+                  <option value="base64">Base64</option>
+                  <option value="json">{t('lorawan.downlink.format.json')}</option>
+                </select>
+              </label>
+              <small className="hint">{payloadFormat === 'json'
+                ? t('lorawan.downlink.formatterNote')
+                : t('lorawan.downlink.encodingNote')}</small>
+            </div>
+            <textarea
+              className="mono downlink-payload"
+              aria-label={t('lorawan.downlink.payload')}
+              value={payload}
+              placeholder={t(`lorawan.downlink.payloadPlaceholder.${payloadFormat}`)}
+              spellCheck={false}
+              onChange={(event) => setPayload(event.target.value)}
+            />
           </section>
-        ) : (attempted || hasStarted) ? (
-          <p className="replay-warning invalid" role="alert">{t(errorKeys[result.error])}</p>
-        ) : null}
 
-        <p className="lorawan-downlink-safety">{t('lorawan.downlink.safety')}</p>
+          {result.ok ? (
+            <section className="subpanel preview-ok">
+              <div className="subpanel-head">
+                <h3>{t('lorawan.downlink.generated')}</h3>
+                {result.publication.framePayloadBytes !== undefined && (
+                  <span className="badge">{t('lorawan.downlink.frameSize', {
+                    count: formatNumber(result.publication.framePayloadBytes)
+                  })}</span>
+                )}
+              </div>
+              <label className="field">
+                <span>{t('lorawan.downlink.generatedTopic')}</span>
+                <code className="code inline">{result.publication.topic}</code>
+              </label>
+              <label className="field">
+                <span>{t('lorawan.downlink.generatedPayload')}</span>
+                <pre className="code">{result.publication.payload}</pre>
+              </label>
+            </section>
+          ) : (attempted || hasStarted) ? (
+            <div className="notice error" role="alert">
+              <span>{t(errorKeys[result.error])}</span>
+            </div>
+          ) : null}
 
-        <div className="dialog-actions">
-          <button type="button" onClick={onClose}>{t('common.cancel')}</button>
+          <p className="hint">{t('lorawan.downlink.safety')}</p>
+        </div>
+
+        <footer className="dialog-actions">
+          <button className="btn ghost" type="button" onClick={onClose}>{t('common.cancel')}</button>
           <button
-            className="primary-button"
+            className="btn primary"
             type="submit"
             disabled={!connected || publishing || !result.ok}
             title={!connected ? t('lorawan.downlink.connectFirst') : undefined}
           >
-            <SendIcon />
+            <SendIcon width={16} height={16} />
             {t(publishing ? 'lorawan.downlink.publishing' : 'lorawan.downlink.publish')}
           </button>
-        </div>
+        </footer>
       </form>
     </div>
   )

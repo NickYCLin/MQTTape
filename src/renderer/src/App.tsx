@@ -2,6 +2,7 @@ import { useMemo, useRef, useState, type ChangeEvent } from 'react'
 import { ConnectionPanel } from './components/ConnectionPanel'
 import {
   DownloadIcon,
+  GithubIcon,
   SearchIcon,
   TapeIcon,
   TimelineIcon,
@@ -15,6 +16,7 @@ import { MessageTimeline } from './components/MessageTimeline'
 import { PublishComposer } from './components/PublishComposer'
 import { ReplayDialog } from './components/ReplayDialog'
 import { SubscriptionPanel } from './components/SubscriptionPanel'
+import { ThemeToggle } from './components/ThemeToggle'
 import { TopicExplorer } from './components/TopicExplorer'
 import { UpdateControl } from './components/UpdateControl'
 import { useMqttSession } from './hooks/use-mqtt-session'
@@ -47,6 +49,9 @@ export default function App() {
     () => filterMessages(session.messages, query),
     [query, session.messages]
   )
+  const endpoint = `${session.config.host}:${session.config.port}`
+  const statusDetail = session.status.detail
+    || (connected ? endpoint : t(session.isDesktop ? 'mode.desktopFull' : 'mode.webSocketLite'))
 
   const saveCapture = async (capture: CaptureFile): Promise<boolean> => {
     try {
@@ -85,26 +90,29 @@ export default function App() {
   }
 
   return (
-    <div className="app-shell">
-      <header className="app-header">
-        <div className="brand-lockup">
-          <div className="brand-mark"><TapeIcon width={25} height={25} /></div>
-          <div>
-            <h1>MQTTape</h1>
-            <p>{t('app.tagline')}</p>
-          </div>
+    <div className="app">
+      <header className="topbar">
+        <div className="brand">
+          <span className="brand-mark" aria-hidden="true"><TapeIcon width={20} height={20} /></span>
+          <span className="brand-text">
+            <strong>MQTTape</strong>
+            <small>{t('app.tagline')}</small>
+          </span>
         </div>
-        <div className="header-status">
-          <span className={`status-dot ${session.status.state}`} />
-          <div>
+
+        <div className={`status status-${session.status.state}`}>
+          <span className="status-dot" aria-hidden="true" />
+          <span className="status-text">
             <strong>{t(statusLabelKeys[session.status.state])}</strong>
-            <span>{session.status.detail || t(session.isDesktop ? 'mode.desktopFull' : 'mode.webSocketLite')}</span>
-          </div>
+            <small title={statusDetail}>{statusDetail}</small>
+          </span>
         </div>
-        <div className="header-actions">
+
+        <div className="topbar-actions">
           <UpdateControl />
-          <label className="language-switcher">
-            <span>{t('language.label')}</span>
+          <ThemeToggle />
+          <label className="select-inline">
+            <span className="sr-only">{t('language.label')}</span>
             <select
               aria-label={t('language.label')}
               value={language}
@@ -115,13 +123,14 @@ export default function App() {
             </select>
           </label>
           <a
-            className="github-link"
+            className="btn ghost icon"
             href="https://github.com/NickYCLin/MQTTape"
             target="_blank"
             rel="noreferrer"
+            title={t('app.github')}
+            aria-label={t('app.github')}
           >
-            {t('app.github')}
-            <span aria-hidden="true">↗</span>
+            <GithubIcon width={16} height={16} />
           </a>
         </div>
       </header>
@@ -152,93 +161,97 @@ export default function App() {
           />
         </aside>
 
-        <main className="main-stage">
-          <section className="stats-row" aria-label={t('stats.label')}>
-            <div className="stat-card">
-              <span>{t('common.incoming')}</span>
-              <strong>{formatNumber(session.stats.incoming)}</strong>
-              <small>{t('stats.messages')}</small>
+        <main className="stage">
+          <section className="metrics" aria-label={t('stats.label')}>
+            <div className="metric">
+              <span className="metric-label">{t('common.incoming')}</span>
+              <strong className="metric-value">{formatNumber(session.stats.incoming)}</strong>
+              <small className="metric-note">{t('stats.messages')}</small>
             </div>
-            <div className="stat-card">
-              <span>{t('common.outgoing')}</span>
-              <strong>{formatNumber(session.stats.outgoing)}</strong>
-              <small>{t('stats.messages')}</small>
+            <div className="metric">
+              <span className="metric-label">{t('common.outgoing')}</span>
+              <strong className="metric-value">{formatNumber(session.stats.outgoing)}</strong>
+              <small className="metric-note">{t('stats.messages')}</small>
             </div>
-            <div className="stat-card">
-              <span>{t('stats.captured')}</span>
-              <strong>{formatBytes(session.stats.bytes)}</strong>
-              <small>{t('stats.inSession')}</small>
+            <div className="metric">
+              <span className="metric-label">{t('stats.captured')}</span>
+              <strong className="metric-value">{formatBytes(session.stats.bytes)}</strong>
+              <small className="metric-note">{t('stats.inSession')}</small>
             </div>
-            <div className="stat-card capture-state">
-              <span>{t('stats.recorder')}</span>
-              <strong><i className={connected ? 'recording' : ''} />{t(connected ? 'stats.live' : 'stats.ready')}</strong>
-              <small>{t('stats.limit')}</small>
+            <div className="metric">
+              <span className="metric-label">{t('stats.recorder')}</span>
+              <strong className="metric-value metric-state">
+                <i className={`rec-dot ${connected ? 'recording' : ''}`} aria-hidden="true" />
+                {t(connected ? 'stats.live' : 'stats.ready')}
+              </strong>
+              <small className="metric-note">{t('stats.limit')}</small>
             </div>
           </section>
 
-          <section className="timeline-panel">
-            <div className="timeline-toolbar">
-              <div>
-                <span className="eyebrow">{t(activeView === 'timeline' ? 'session.live' : 'session.topicExplorer')}</span>
-                <h2>{t(activeView === 'timeline' ? 'session.timeline' : 'session.topicTree')}</h2>
-              </div>
-              <div className="toolbar-actions">
-                <div className="view-switcher" aria-label={t('session.view')}>
-                  <button
-                    className={activeView === 'timeline' ? 'active' : ''}
-                    type="button"
-                    aria-pressed={activeView === 'timeline'}
-                    onClick={() => setActiveView('timeline')}
-                  >
-                    <TimelineIcon />
-                    {t('session.timelineTab')}
-                  </button>
-                  <button
-                    className={activeView === 'topics' ? 'active' : ''}
-                    type="button"
-                    aria-pressed={activeView === 'topics'}
-                    onClick={() => setActiveView('topics')}
-                  >
-                    <TopicTreeIcon />
-                    {t('session.topicsTab')}
-                  </button>
-                </div>
-                <label className="search-box">
-                  <SearchIcon />
-                  <input
-                    value={query}
-                    placeholder={t(activeView === 'timeline' ? 'session.filterMessagesPlaceholder' : 'session.filterTopicsPlaceholder')}
-                    aria-label={t(activeView === 'timeline' ? 'session.filterMessages' : 'session.filterTopics')}
-                    onChange={(event) => setQuery(event.target.value)}
-                  />
-                  {query && (
-                    <button type="button" aria-label={t('session.clearFilter')} onClick={() => setQuery('')}>
-                      <XIcon width={14} height={14} />
-                    </button>
-                  )}
-                </label>
+          <section className="stage-panel" aria-labelledby="stage-title">
+            <h2 className="sr-only" id="stage-title">
+              {t(activeView === 'timeline' ? 'session.timeline' : 'session.topicTree')}
+            </h2>
+            <div className="stage-toolbar">
+              <div className="segmented" role="group" aria-label={t('session.view')}>
                 <button
-                  className="icon-button"
+                  className={activeView === 'timeline' ? 'active' : ''}
+                  type="button"
+                  aria-pressed={activeView === 'timeline'}
+                  onClick={() => setActiveView('timeline')}
+                >
+                  <TimelineIcon width={15} height={15} />
+                  <span>{t('session.timelineTab')}</span>
+                </button>
+                <button
+                  className={activeView === 'topics' ? 'active' : ''}
+                  type="button"
+                  aria-pressed={activeView === 'topics'}
+                  onClick={() => setActiveView('topics')}
+                >
+                  <TopicTreeIcon width={15} height={15} />
+                  <span>{t('session.topicsTab')}</span>
+                </button>
+              </div>
+
+              <label className="search">
+                <SearchIcon width={15} height={15} />
+                <input
+                  value={query}
+                  placeholder={t(activeView === 'timeline' ? 'session.filterMessagesPlaceholder' : 'session.filterTopicsPlaceholder')}
+                  aria-label={t(activeView === 'timeline' ? 'session.filterMessages' : 'session.filterTopics')}
+                  onChange={(event) => setQuery(event.target.value)}
+                />
+                {query && (
+                  <button type="button" aria-label={t('session.clearFilter')} onClick={() => setQuery('')}>
+                    <XIcon width={14} height={14} />
+                  </button>
+                )}
+              </label>
+
+              <div className="toolbar-actions">
+                <button
+                  className="btn ghost icon"
                   type="button"
                   title={t('session.clearMessages')}
                   aria-label={t('session.clearMessages')}
                   disabled={session.messages.length === 0}
                   onClick={session.clearMessages}
                 >
-                  <TrashIcon />
+                  <TrashIcon width={16} height={16} />
                 </button>
                 <button
-                  className="secondary-button"
+                  className="btn ghost"
                   type="button"
                   disabled={!connected || session.busy}
                   onClick={() => captureInputRef.current?.click()}
                 >
-                  <UploadIcon />
-                  {t('session.replay')}
+                  <UploadIcon width={16} height={16} />
+                  <span>{t('session.replay')}</span>
                 </button>
                 <input
                   ref={captureInputRef}
-                  className="visually-hidden"
+                  className="sr-only"
                   type="file"
                   accept="application/json,.json"
                   aria-label={t('session.captureFile')}
@@ -246,26 +259,27 @@ export default function App() {
                   onChange={importAndReplay}
                 />
                 <button
-                  className="secondary-button"
+                  className="btn ghost"
                   type="button"
                   disabled={session.messages.length === 0 || session.busy}
                   onClick={() => setCaptureToExport(session.makeCapture())}
                 >
-                  <DownloadIcon />
-                  {t('session.export')}
+                  <DownloadIcon width={16} height={16} />
+                  <span>{t('session.export')}</span>
                 </button>
               </div>
             </div>
 
             {query && activeView === 'timeline' && (
-              <div className="filter-result">
+              <p className="filter-note">
                 {t('session.filterResult', {
                   visible: formatNumber(visibleMessages.length),
                   total: formatNumber(session.messages.length)
                 })}
-              </div>
+              </p>
             )}
-            <div className={`timeline-scroll ${activeView === 'topics' ? 'topic-scroll' : ''}`}>
+
+            <div className={`stage-scroll ${activeView === 'topics' ? 'no-scroll' : ''}`}>
               {activeView === 'timeline' ? (
                 <MessageTimeline messages={visibleMessages} />
               ) : (
@@ -286,13 +300,13 @@ export default function App() {
       </div>
 
       {session.error && (
-        <div className="error-toast" role="alert">
-          <div>
+        <div className="toast" role="alert">
+          <div className="toast-copy">
             <strong>{t('error.operationFailed')}</strong>
             <span>{translateMessage(session.error)}</span>
           </div>
           <button type="button" aria-label={t('error.dismiss')} onClick={session.clearError}>
-            <XIcon />
+            <XIcon width={16} height={16} />
           </button>
         </div>
       )}

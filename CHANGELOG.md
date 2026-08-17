@@ -4,6 +4,16 @@ All notable changes to MQTTape are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Light, dark, and follow-system appearance themes with a persisted top-bar switch.
+
+### Changed
+
+- Rebuilt the interface on a single design-token system covering colour, type, spacing, and radius.
+- Raised the base type scale from 8–10 px to 11–20 px and reserved the monospace face for MQTT data.
+- Replaced the statistics cards, session toolbar, message rows, and dialogs with a shared component layer.
+
 ## [0.10.0] - 2026-08-17
 
 ### Added

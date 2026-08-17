@@ -32,13 +32,13 @@ export function UpdateControl() {
   if (status.mode === 'manual') {
     return (
       <a
-        className="update-control manual"
+        className="btn ghost sm update-control"
         href={RELEASES_URL}
         target="_blank"
         rel="noreferrer"
         title={t(status.reason === 'portable' ? 'update.manualPortable' : 'update.manual')}
       >
-        <DownloadIcon />
+        <DownloadIcon width={15} height={15} />
         <span>{t(status.reason === 'portable' ? 'update.manualPortable' : 'update.manual')}</span>
       </a>
     )
@@ -70,7 +70,7 @@ export function UpdateControl() {
 
   return (
     <button
-      className={`update-control ${status.state}`}
+      className={`btn ghost sm update-control ${status.state}`}
       type="button"
       disabled={busy}
       aria-live="polite"
@@ -78,7 +78,7 @@ export function UpdateControl() {
       title={label}
       onClick={() => void handleClick()}
     >
-      <DownloadIcon />
+      <DownloadIcon width={15} height={15} />
       <span>{label}</span>
     </button>
   )

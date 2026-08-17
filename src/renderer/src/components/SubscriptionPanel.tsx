@@ -26,56 +26,57 @@ export function SubscriptionPanel({
   }
 
   return (
-    <section className="panel subscription-panel">
-      <div className="panel-heading compact-heading">
-        <div>
-          <span className="eyebrow">{t('subscriptions.eyebrow')}</span>
-          <h2>{t('subscriptions.title')}</h2>
-        </div>
-        <span className="counter-badge">{subscriptions.size}</span>
+    <section className="panel">
+      <div className="panel-head">
+        <h2>{t('subscriptions.title')}</h2>
+        <span className="badge">{subscriptions.size}</span>
       </div>
 
-      <form className="subscription-form" onSubmit={submit}>
-        <input
-          aria-label={t('subscriptions.topic')}
-          value={topic}
-          disabled={!connected}
-          placeholder="sensors/#"
-          spellCheck={false}
-          onChange={(event) => setTopic(event.target.value)}
-        />
-        <select
-          aria-label={t('subscriptions.qos')}
-          value={qos}
-          disabled={!connected}
-          onChange={(event) => setQos(Number(event.target.value) as MqttQos)}
-        >
-          <option value={0}>QoS 0</option>
-          <option value={1}>QoS 1</option>
-          <option value={2}>QoS 2</option>
-        </select>
-        <button type="submit" disabled={!connected || !topic.trim()}>
-          {t('subscriptions.add')}
-        </button>
-      </form>
+      <div className="panel-body">
+        <form className="subscribe-row" onSubmit={submit}>
+          <input
+            className="mono"
+            aria-label={t('subscriptions.topic')}
+            value={topic}
+            disabled={!connected}
+            placeholder="sensors/#"
+            spellCheck={false}
+            onChange={(event) => setTopic(event.target.value)}
+          />
+          <select
+            aria-label={t('subscriptions.qos')}
+            value={qos}
+            disabled={!connected}
+            onChange={(event) => setQos(Number(event.target.value) as MqttQos)}
+          >
+            <option value={0}>QoS 0</option>
+            <option value={1}>QoS 1</option>
+            <option value={2}>QoS 2</option>
+          </select>
+          <button className="btn primary" type="submit" disabled={!connected || !topic.trim()}>
+            {t('subscriptions.add')}
+          </button>
+        </form>
 
-      <div className="subscription-list">
         {subscriptions.size === 0 ? (
-          <p className="empty-hint">{t('subscriptions.empty')}</p>
+          <p className="hint centered">{t('subscriptions.empty')}</p>
         ) : (
-          [...subscriptions.entries()].map(([subscription, subscriptionQos]) => (
-            <div className="subscription-item" key={subscription}>
-              <span title={subscription}>{subscription}</span>
-              <small>Q{subscriptionQos}</small>
-              <button
-                type="button"
-                aria-label={t('subscriptions.unsubscribe', { topic: subscription })}
-                onClick={() => onUnsubscribe(subscription)}
-              >
-                <XIcon width={14} height={14} />
-              </button>
-            </div>
-          ))
+          <ul className="subscribe-list">
+            {[...subscriptions.entries()].map(([subscription, subscriptionQos]) => (
+              <li className="subscribe-item" key={subscription}>
+                <span className="mono" title={subscription}>{subscription}</span>
+                <span className="tag">QoS {subscriptionQos}</span>
+                <button
+                  className="btn plain icon sm"
+                  type="button"
+                  aria-label={t('subscriptions.unsubscribe', { topic: subscription })}
+                  onClick={() => onUnsubscribe(subscription)}
+                >
+                  <XIcon width={14} height={14} />
+                </button>
+              </li>
+            ))}
+          </ul>
         )}
       </div>
     </section>
