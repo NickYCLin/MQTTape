@@ -18,6 +18,9 @@ message timeline and portable capture files.
 - Retained-value snapshot that recognizes empty retained-message tombstones
 - Automatic Text, formatted JSON, and offset/ASCII Hex payload inspection
 - Binary payload detection plus lossless raw-payload downloads
+- Automatic The Things Stack and ChirpStack LoRaWAN uplink inspection
+- LoRaWAN device, frame, frequency, data-rate, RSSI, and SNR summaries
+- Embedded LoRaWAN Base64 frame decoding and lossless raw-frame downloads
 - Session statistics and binary-safe Base64 capture storage
 - Trim captures by direction, topic or payload, and time range before export
 - Export sanitized MQTTape capture files without passwords or local TLS paths
@@ -49,6 +52,23 @@ message timeline and portable capture files.
 
 Browsers cannot open arbitrary TCP sockets, so Web Lite intentionally limits the
 protocol selector to WebSocket transports.
+
+## LoRaWAN MQTT
+
+MQTTape connects to the MQTT side of a LoRaWAN deployment; it does not receive
+LoRa radio traffic directly. When an uplink matches the official JSON envelope
+from [The Things Stack](https://www.thethingsindustries.com/docs/integrations/data-formats/)
+or [ChirpStack](https://www.chirpstack.io/docs/chirpstack/integrations/events/),
+the payload inspector automatically opens a LoRaWAN view with device identifiers,
+FPort, frame counter, frequency, data rate, gateway RSSI/SNR, decoded application
+data, and the embedded binary frame.
+
+Typical uplink subscriptions include `v3/<application-id>/devices/+/up` for The
+Things Stack and `application/<application-id>/device/+/event/up` for ChirpStack.
+Broker hostnames, credentials, tenant suffixes, and topic structures can vary by
+deployment, so use the values supplied by the network operator. Downlinks can be
+sent through MQTTape's standard publish composer when you provide the exact topic
+and JSON schema required by the LoRaWAN platform.
 
 Web Lite is published at <https://nickyclin.github.io/MQTTape/>. Because GitHub
 Pages uses HTTPS, remote brokers must normally expose a trusted `wss://` endpoint;
