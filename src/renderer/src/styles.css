@@ -1261,9 +1261,21 @@ input[type='checkbox'] {
   gap: 20px;
   margin-bottom: 14px;
 }
-.downlink-tracker-head > div { min-width: 0; display: grid; gap: 4px; }
+.downlink-tracker-head > div:first-child { min-width: 0; display: grid; gap: 4px; }
 .downlink-tracker-head h3 { font-size: 15px; }
 .downlink-tracker-head p { max-width: 760px; color: var(--text-2); font-size: 12px; line-height: 1.55; }
+.downlink-tracker-head .downlink-history-note { color: var(--text-3); font-size: 11px; }
+.downlink-tracker-summary { flex: none; display: flex; align-items: center; justify-content: flex-end; gap: 7px; flex-wrap: wrap; }
+.downlink-history-actions { display: flex; gap: 6px; }
+.downlink-storage-warning {
+  margin: 0 0 12px;
+  padding: 8px 10px;
+  color: var(--danger);
+  border: 1px solid color-mix(in srgb, var(--danger) 34%, transparent);
+  border-radius: var(--radius-sm);
+  background: var(--danger-soft);
+  font-size: 11.5px;
+}
 
 .downlink-track-list { display: grid; gap: 10px; }
 .downlink-track {
@@ -1659,6 +1671,8 @@ input[type='checkbox'] {
   .metrics { grid-template-columns: 1fr; }
   .metric + .metric { border-top: 1px solid var(--border); border-left: 0; }
   .downlink-fields { grid-template-columns: 1fr; }
+  .downlink-tracker-head { flex-direction: column; }
+  .downlink-tracker-summary { justify-content: flex-start; }
   .downlink-track-head,
   .downlink-event-line { align-items: flex-start; flex-direction: column; }
   .downlink-track-meta { grid-template-columns: repeat(2, minmax(0, 1fr)); }

@@ -1,64 +1,19 @@
 import type { MqttMessageRecord } from './contracts'
-import type { LoRaWanDownlinkProvider } from './lorawan-downlink'
+import type {
+  LoRaWanDownlinkCorrelationBasis,
+  LoRaWanDownlinkEvent,
+  LoRaWanDownlinkEventKind,
+  LoRaWanDownlinkStatus,
+  LoRaWanDownlinkTrack
+} from './lorawan-downlink-history'
 
-export type LoRaWanDownlinkEventKind =
-  | 'request'
-  | 'queued'
-  | 'sent'
-  | 'ack'
-  | 'nack'
-  | 'failed'
-  | 'txack'
-
-export type LoRaWanDownlinkStatus =
-  | 'requested'
-  | 'queued'
-  | 'sent'
-  | 'acknowledged'
-  | 'not-acknowledged'
-  | 'failed'
-
-export type LoRaWanDownlinkCorrelationBasis =
-  | 'correlation-id'
-  | 'queue-item-id'
-  | 'device-order'
-  | 'none'
-
-export interface LoRaWanDownlinkEvent {
-  id: string
-  messageId: string
-  provider: LoRaWanDownlinkProvider
-  kind: LoRaWanDownlinkEventKind
-  status: LoRaWanDownlinkStatus
-  direction: MqttMessageRecord['direction']
-  observedAt: string
-  occurredAt: string
-  topic: string
-  applicationId: string
-  deviceId: string
-  devEui?: string
-  correlationIds: string[]
-  queueItemId?: string
-  fPort?: number
-  frameCounter?: number
-  confirmed?: boolean
-  error?: string
-}
-
-export interface LoRaWanDownlinkTrack {
-  id: string
-  provider: LoRaWanDownlinkProvider
-  applicationId: string
-  deviceId: string
-  devEui?: string
-  status: LoRaWanDownlinkStatus
-  correlationBasis: LoRaWanDownlinkCorrelationBasis
-  correlationId?: string
-  queueItemId?: string
-  firstObservedAt: string
-  lastObservedAt: string
-  events: LoRaWanDownlinkEvent[]
-}
+export type {
+  LoRaWanDownlinkCorrelationBasis,
+  LoRaWanDownlinkEvent,
+  LoRaWanDownlinkEventKind,
+  LoRaWanDownlinkStatus,
+  LoRaWanDownlinkTrack
+} from './lorawan-downlink-history'
 
 type JsonRecord = Record<string, unknown>
 
@@ -366,11 +321,10 @@ function inferredChirpStackTrack(
     .sort((left, right) => Date.parse(right.lastObservedAt) - Date.parse(left.lastObservedAt))[0]
 }
 
-export function buildLoRaWanDownlinkTracks(
-  messages: MqttMessageRecord[]
+export function buildLoRaWanDownlinkTracksFromEvents(
+  sourceEvents: LoRaWanDownlinkEvent[]
 ): LoRaWanDownlinkTrack[] {
-  const events = messages
-    .flatMap(inspectLoRaWanDownlinkEvents)
+  const events = [...sourceEvents]
     .sort((left, right) => observedEventTime(left) - observedEventTime(right))
   const tracks: LoRaWanDownlinkTrack[] = []
 
@@ -402,4 +356,10 @@ export function buildLoRaWanDownlinkTracks(
   }
 
   return tracks.sort((left, right) => Date.parse(right.lastObservedAt) - Date.parse(left.lastObservedAt))
+}
+
+export function buildLoRaWanDownlinkTracks(
+  messages: MqttMessageRecord[]
+): LoRaWanDownlinkTrack[] {
+  return buildLoRaWanDownlinkTracksFromEvents(messages.flatMap(inspectLoRaWanDownlinkEvents))
 }

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { MqttMessageRecord } from './contracts'
 import {
   buildLoRaWanDownlinkTracks,
+  buildLoRaWanDownlinkTracksFromEvents,
   inspectLoRaWanDownlinkEvents
 } from './lorawan-downlink-status'
 
@@ -77,6 +78,35 @@ describe('LoRaWAN downlink status tracking', () => {
     })
     expect(tracks[0].events.map(({ kind }) => kind))
       .toEqual(['request', 'queued', 'sent', 'ack'])
+  })
+
+  it('continues correlation when persisted request and new feedback come from separate sessions', () => {
+    const persisted = inspectLoRaWanDownlinkEvents(message(
+      'request',
+      'outgoing',
+      '2026-08-17T01:00:00.000Z',
+      'v3/app/devices/device/down/push',
+      { downlinks: [{ f_port: 2, correlation_ids: ['mqttape:restored'] }] }
+    ))
+    const observedAfterRestart = inspectLoRaWanDownlinkEvents(message(
+      'ack',
+      'incoming',
+      '2026-08-17T01:05:00.000Z',
+      'v3/app/devices/device/down/ack',
+      {
+        correlation_ids: ['mqttape:restored'],
+        downlink_ack: { f_port: 2, correlation_ids: ['mqttape:restored'] }
+      }
+    ))
+
+    const tracks = buildLoRaWanDownlinkTracksFromEvents([
+      ...persisted,
+      ...observedAfterRestart
+    ])
+
+    expect(tracks).toHaveLength(1)
+    expect(tracks[0].status).toBe('acknowledged')
+    expect(tracks[0].events.map(({ kind }) => kind)).toEqual(['request', 'ack'])
   })
 
   it('extracts The Things Stack failure details', () => {
