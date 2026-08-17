@@ -4,6 +4,10 @@ All notable changes to MQTTape are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Reusable local replay presets for message directions, speed, and topic-prefix remapping.
+
 ## [0.5.0] - 2026-08-17
 
 ### Added
