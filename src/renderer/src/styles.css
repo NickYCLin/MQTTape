@@ -137,6 +137,18 @@ a:focus-visible {
 
 .github-link:hover { color: var(--text); }
 
+.header-actions { justify-self: end; display: flex; align-items: center; gap: 14px; }
+.language-switcher { display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: 10px; font-weight: 600; }
+.language-switcher select {
+  width: auto;
+  min-width: 94px;
+  height: 30px;
+  padding: 0 26px 0 9px;
+  border-color: var(--line-soft);
+  background-color: rgba(18, 25, 33, 0.9);
+  font-size: 11px;
+}
+
 .workspace {
   height: calc(100vh - 72px);
   display: grid;
@@ -598,6 +610,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 .replay-progress progress::-webkit-progress-value { border-radius: inherit; background: var(--accent); }
 .replay-progress p { margin: 0; overflow: hidden; color: var(--muted); font: 9px ui-monospace, 'Cascadia Mono', monospace; text-overflow: ellipsis; white-space: nowrap; }
 .dialog-actions { justify-content: flex-end; gap: 8px; }
+.dialog-actions > button { min-width: 64px; white-space: nowrap; }
 .danger-button { padding: 9px 14px; color: #ffb8bc; border: 1px solid rgba(255, 107, 115, 0.3); border-radius: 8px; background: rgba(255, 107, 115, 0.08); font-size: 10px; }
 .danger-button:hover:not(:disabled) { background: rgba(255, 107, 115, 0.14); }
 
@@ -665,6 +678,10 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 }
 
 @media (max-width: 620px) {
+  .app-header { padding: 0 14px; }
+  .language-switcher > span,
+  .github-link { display: none; }
+  .language-switcher select { min-width: 92px; }
   .toolbar-actions { flex-wrap: wrap; }
   .view-switcher { order: 1; }
   .search-box { min-width: 180px; order: 2; }

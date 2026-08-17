@@ -6,6 +6,7 @@ import type {
   TlsFileKind
 } from '../../../shared/contracts'
 import { PlugIcon } from './icons'
+import { useI18n } from '../i18n'
 
 interface ConnectionPanelProps {
   config: ConnectionConfig
@@ -47,6 +48,7 @@ export function ConnectionPanel({
   onDeleteProfile,
   onSelectTlsFile
 }: ConnectionPanelProps) {
+  const { t } = useI18n()
   const update = <Key extends keyof ConnectionConfig>(
     key: Key,
     value: ConnectionConfig[Key]
@@ -73,44 +75,44 @@ export function ConnectionPanel({
     <form className="panel connection-panel" onSubmit={submit}>
       <div className="panel-heading">
         <div>
-          <span className="eyebrow">BROKER</span>
-          <h2>Connection</h2>
+          <span className="eyebrow">{t('connection.eyebrow')}</span>
+          <h2>{t('connection.title')}</h2>
         </div>
-        <span className="mode-badge">{isDesktop ? 'DESKTOP' : 'WEB LITE'}</span>
+        <span className="mode-badge">{t(isDesktop ? 'mode.desktop' : 'mode.webLite')}</span>
       </div>
 
       <div className="profile-controls">
         <select
-          aria-label="Saved broker profile"
+          aria-label={t('connection.savedProfile')}
           value={selectedProfileId}
           disabled={connected || connecting || busy}
           onChange={(event) => onSelectProfile(event.target.value)}
         >
-          <option value="">New unsaved profile</option>
+          <option value="">{t('connection.newProfile')}</option>
           {profiles.map((profile) => (
             <option value={profile.id} key={profile.id}>{profile.config.name}</option>
           ))}
         </select>
         <button type="button" disabled={busy || !config.name.trim()} onClick={onSaveProfile}>
-          Save
+          {t('common.save')}
         </button>
         <button type="button" disabled={busy || !selectedProfileId} onClick={onDeleteProfile}>
-          Delete
+          {t('common.delete')}
         </button>
       </div>
 
       <div className="field-grid">
         <label className="field profile-name-field">
-          <span>Profile name</span>
+          <span>{t('connection.profileName')}</span>
           <input
             value={config.name}
             disabled={connected || connecting}
-            placeholder="Local broker"
+            placeholder={t('connection.localBroker')}
             onChange={(event) => update('name', event.target.value)}
           />
         </label>
         <label className="field protocol-field">
-          <span>Protocol</span>
+          <span>{t('connection.protocol')}</span>
           <select
             value={config.protocol}
             disabled={connected || connecting}
@@ -124,7 +126,7 @@ export function ConnectionPanel({
         </label>
 
         <label className="field host-field">
-          <span>Host</span>
+          <span>{t('connection.host')}</span>
           <input
             value={config.host}
             disabled={connected || connecting}
@@ -135,7 +137,7 @@ export function ConnectionPanel({
         </label>
 
         <label className="field port-field">
-          <span>Port</span>
+          <span>{t('connection.port')}</span>
           <input
             type="number"
             min="1"
@@ -148,7 +150,7 @@ export function ConnectionPanel({
 
         {(config.protocol === 'ws' || config.protocol === 'wss') && (
           <label className="field path-field">
-            <span>Path</span>
+            <span>{t('connection.path')}</span>
             <input
               value={config.path}
               disabled={connected || connecting}
@@ -160,34 +162,34 @@ export function ConnectionPanel({
         )}
 
         <label className="field">
-          <span>Username</span>
+          <span>{t('connection.username')}</span>
           <input
             value={config.username}
             disabled={connected || connecting}
             autoComplete="username"
-            placeholder="Optional"
+            placeholder={t('common.optional')}
             onChange={(event) => update('username', event.target.value)}
           />
         </label>
 
         <label className="field">
-          <span>Password</span>
+          <span>{t('connection.password')}</span>
           <input
             type="password"
             value={config.password}
             disabled={connected || connecting}
             autoComplete="current-password"
-            placeholder="Not stored"
+            placeholder={t('connection.notStored')}
             onChange={(event) => update('password', event.target.value)}
           />
         </label>
       </div>
 
       <details className="advanced-settings">
-        <summary>Advanced settings</summary>
+        <summary>{t('connection.advanced')}</summary>
         <div className="field-grid advanced-grid">
           <label className="field">
-            <span>Client ID</span>
+            <span>{t('connection.clientId')}</span>
             <input
               value={config.clientId}
               disabled={connected || connecting}
@@ -196,7 +198,7 @@ export function ConnectionPanel({
             />
           </label>
           <label className="field">
-            <span>MQTT version</span>
+            <span>{t('connection.mqttVersion')}</span>
             <select
               value={config.mqttVersion}
               disabled={connected || connecting}
@@ -207,7 +209,7 @@ export function ConnectionPanel({
             </select>
           </label>
           <label className="field">
-            <span>Keep alive (sec)</span>
+            <span>{t('connection.keepAlive')}</span>
             <input
               type="number"
               min="0"
@@ -223,7 +225,7 @@ export function ConnectionPanel({
               disabled={connected || connecting}
               onChange={(event) => update('clean', event.target.checked)}
             />
-            <span>Clean session</span>
+            <span>{t('connection.cleanSession')}</span>
           </label>
           {isDesktop && (config.protocol === 'mqtts' || config.protocol === 'wss') && (
             <label className="check-field">
@@ -233,43 +235,43 @@ export function ConnectionPanel({
                 disabled={connected || connecting}
                 onChange={(event) => update('rejectUnauthorized', event.target.checked)}
               />
-              <span>Verify TLS certificate</span>
+              <span>{t('connection.verifyTls')}</span>
             </label>
           )}
           {isDesktop && (config.protocol === 'mqtts' || config.protocol === 'wss') && (
             <div className="tls-settings">
-              <span className="tls-heading">mTLS certificates</span>
+              <span className="tls-heading">{t('connection.mtls')}</span>
               <div className="tls-file-row">
                 <label className="field">
-                  <span>Custom CA</span>
-                  <input readOnly value={config.caPath} placeholder="Use system trust store" />
+                  <span>{t('connection.customCa')}</span>
+                  <input readOnly value={config.caPath} placeholder={t('connection.systemTrust')} />
                 </label>
-                <button type="button" disabled={connected || connecting} onClick={() => void chooseTlsFile('caPath', 'ca')}>Select</button>
-                {config.caPath && <button type="button" disabled={connected || connecting} onClick={() => update('caPath', '')}>Clear</button>}
+                <button type="button" disabled={connected || connecting} onClick={() => void chooseTlsFile('caPath', 'ca')}>{t('common.select')}</button>
+                {config.caPath && <button type="button" disabled={connected || connecting} onClick={() => update('caPath', '')}>{t('common.clear')}</button>}
               </div>
               <div className="tls-file-row">
                 <label className="field">
-                  <span>Client certificate</span>
-                  <input readOnly value={config.clientCertificatePath} placeholder="Optional PEM or CRT" />
+                  <span>{t('connection.clientCertificate')}</span>
+                  <input readOnly value={config.clientCertificatePath} placeholder={t('connection.optionalCertificate')} />
                 </label>
-                <button type="button" disabled={connected || connecting} onClick={() => void chooseTlsFile('clientCertificatePath', 'certificate')}>Select</button>
-                {config.clientCertificatePath && <button type="button" disabled={connected || connecting} onClick={() => update('clientCertificatePath', '')}>Clear</button>}
+                <button type="button" disabled={connected || connecting} onClick={() => void chooseTlsFile('clientCertificatePath', 'certificate')}>{t('common.select')}</button>
+                {config.clientCertificatePath && <button type="button" disabled={connected || connecting} onClick={() => update('clientCertificatePath', '')}>{t('common.clear')}</button>}
               </div>
               <div className="tls-file-row">
                 <label className="field">
-                  <span>Client private key</span>
-                  <input readOnly value={config.clientKeyPath} placeholder="Optional KEY or PEM" />
+                  <span>{t('connection.clientKey')}</span>
+                  <input readOnly value={config.clientKeyPath} placeholder={t('connection.optionalKey')} />
                 </label>
-                <button type="button" disabled={connected || connecting} onClick={() => void chooseTlsFile('clientKeyPath', 'key')}>Select</button>
-                {config.clientKeyPath && <button type="button" disabled={connected || connecting} onClick={() => update('clientKeyPath', '')}>Clear</button>}
+                <button type="button" disabled={connected || connecting} onClick={() => void chooseTlsFile('clientKeyPath', 'key')}>{t('common.select')}</button>
+                {config.clientKeyPath && <button type="button" disabled={connected || connecting} onClick={() => update('clientKeyPath', '')}>{t('common.clear')}</button>}
               </div>
               <label className="field">
-                <span>Private key passphrase</span>
+                <span>{t('connection.keyPassphrase')}</span>
                 <input
                   type="password"
                   value={config.clientKeyPassphrase}
                   disabled={connected || connecting}
-                  placeholder="Optional · stored securely with profile"
+                  placeholder={t('connection.securePassphrase')}
                   onChange={(event) => update('clientKeyPassphrase', event.target.value)}
                 />
               </label>
@@ -285,7 +287,7 @@ export function ConnectionPanel({
         onClick={connected ? onDisconnect : undefined}
       >
         <PlugIcon />
-        {connecting ? 'Connecting…' : connected ? 'Disconnect' : 'Connect'}
+        {t(connecting ? 'connection.connecting' : connected ? 'connection.disconnect' : 'connection.connect')}
       </button>
     </form>
   )

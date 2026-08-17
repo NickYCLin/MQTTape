@@ -3,22 +3,14 @@ import type { MqttMessageRecord } from '../../../shared/contracts'
 import { formatBytes, isProbablyBinaryText } from '../../../shared/message'
 import { ChevronIcon } from './icons'
 import { PayloadInspector } from './PayloadInspector'
+import { useI18n } from '../i18n'
 
 interface MessageTimelineProps {
   messages: MqttMessageRecord[]
 }
 
-function formatTime(timestamp: string): string {
-  return new Intl.DateTimeFormat(undefined, {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    fractionalSecondDigits: 3,
-    hour12: false
-  }).format(new Date(timestamp))
-}
-
 export function MessageTimeline({ messages }: MessageTimelineProps) {
+  const { t, formatTime } = useI18n()
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
 
   const toggle = (id: string): void => {
@@ -38,8 +30,8 @@ export function MessageTimeline({ messages }: MessageTimelineProps) {
           <i />
           <i />
         </div>
-        <h3>Waiting for MQTT traffic</h3>
-        <p>Connect to a broker and subscribe to a topic. Messages will appear here live.</p>
+        <h3>{t('timeline.waiting')}</h3>
+        <p>{t('timeline.waitingHelp')}</p>
       </div>
     )
   }
@@ -55,10 +47,10 @@ export function MessageTimeline({ messages }: MessageTimelineProps) {
           >
             <button className="message-summary" type="button" onClick={() => toggle(message.id)}>
               <span className="direction-marker">{message.direction === 'incoming' ? 'IN' : 'OUT'}</span>
-              <time>{formatTime(message.timestamp)}</time>
+              <time>{formatTime(message.timestamp, true)}</time>
               <span className="message-topic" title={message.topic}>{message.topic}</span>
               <span className="payload-preview">
-                {isProbablyBinaryText(message.payloadText) ? '<binary payload>' : message.payloadText || '∅'}
+                {isProbablyBinaryText(message.payloadText) ? t('timeline.binaryPayload') : message.payloadText || '∅'}
               </span>
               <span className="message-meta">Q{message.qos}</span>
               {message.retain && <span className="message-meta retained">R</span>}
@@ -68,10 +60,10 @@ export function MessageTimeline({ messages }: MessageTimelineProps) {
             {isExpanded && (
               <div className="message-detail">
                 <div className="detail-meta">
-                  <span>Topic <strong>{message.topic}</strong></span>
+                  <span>{t('common.topic')} <strong>{message.topic}</strong></span>
                   <span>QoS <strong>{message.qos}</strong></span>
-                  <span>Retained <strong>{message.retain ? 'yes' : 'no'}</strong></span>
-                  <span>Duplicate <strong>{message.duplicate ? 'yes' : 'no'}</strong></span>
+                  <span>{t('common.retained')} <strong>{t(message.retain ? 'common.yes' : 'common.no')}</strong></span>
+                  <span>{t('common.duplicate')} <strong>{t(message.duplicate ? 'common.yes' : 'common.no')}</strong></span>
                 </div>
                 <PayloadInspector message={message} />
               </div>

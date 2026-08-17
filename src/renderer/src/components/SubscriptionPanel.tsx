@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import type { MqttQos } from '../../../shared/contracts'
 import { XIcon } from './icons'
+import { useI18n } from '../i18n'
 
 interface SubscriptionPanelProps {
   connected: boolean
@@ -15,6 +16,7 @@ export function SubscriptionPanel({
   onSubscribe,
   onUnsubscribe
 }: SubscriptionPanelProps) {
+  const { t } = useI18n()
   const [topic, setTopic] = useState('#')
   const [qos, setQos] = useState<MqttQos>(0)
 
@@ -27,15 +29,15 @@ export function SubscriptionPanel({
     <section className="panel subscription-panel">
       <div className="panel-heading compact-heading">
         <div>
-          <span className="eyebrow">TOPICS</span>
-          <h2>Subscriptions</h2>
+          <span className="eyebrow">{t('subscriptions.eyebrow')}</span>
+          <h2>{t('subscriptions.title')}</h2>
         </div>
         <span className="counter-badge">{subscriptions.size}</span>
       </div>
 
       <form className="subscription-form" onSubmit={submit}>
         <input
-          aria-label="Subscription topic"
+          aria-label={t('subscriptions.topic')}
           value={topic}
           disabled={!connected}
           placeholder="sensors/#"
@@ -43,7 +45,7 @@ export function SubscriptionPanel({
           onChange={(event) => setTopic(event.target.value)}
         />
         <select
-          aria-label="Subscription QoS"
+          aria-label={t('subscriptions.qos')}
           value={qos}
           disabled={!connected}
           onChange={(event) => setQos(Number(event.target.value) as MqttQos)}
@@ -53,13 +55,13 @@ export function SubscriptionPanel({
           <option value={2}>QoS 2</option>
         </select>
         <button type="submit" disabled={!connected || !topic.trim()}>
-          Add
+          {t('subscriptions.add')}
         </button>
       </form>
 
       <div className="subscription-list">
         {subscriptions.size === 0 ? (
-          <p className="empty-hint">No active subscriptions</p>
+          <p className="empty-hint">{t('subscriptions.empty')}</p>
         ) : (
           [...subscriptions.entries()].map(([subscription, subscriptionQos]) => (
             <div className="subscription-item" key={subscription}>
@@ -67,7 +69,7 @@ export function SubscriptionPanel({
               <small>Q{subscriptionQos}</small>
               <button
                 type="button"
-                aria-label={`Unsubscribe ${subscription}`}
+                aria-label={t('subscriptions.unsubscribe', { topic: subscription })}
                 onClick={() => onUnsubscribe(subscription)}
               >
                 <XIcon width={14} height={14} />

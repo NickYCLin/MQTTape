@@ -15,6 +15,16 @@ import {
   upsertReplayPreset,
   writeReplayPresets
 } from '../lib/replay-presets'
+import { useI18n } from '../i18n'
+import type { TranslationKey } from '../lib/i18n'
+
+const replayStateKeys: Record<ReplayProgress['state'], TranslationKey> = {
+  idle: 'replay.state.idle',
+  running: 'replay.state.running',
+  paused: 'replay.state.paused',
+  completed: 'replay.state.completed',
+  cancelled: 'replay.state.cancelled'
+}
 
 interface ReplayDialogProps {
   capture: CaptureFile
@@ -35,6 +45,7 @@ export function ReplayDialog({
   onCancel,
   onClose
 }: ReplayDialogProps) {
+  const { t, translateMessage, formatNumber, formatDateTime } = useI18n()
   const [includeOutgoing, setIncludeOutgoing] = useState(true)
   const [includeIncoming, setIncludeIncoming] = useState(false)
   const [speed, setSpeed] = useState(1)
@@ -143,49 +154,49 @@ export function ReplayDialog({
       <section className="replay-dialog" role="dialog" aria-modal="true" aria-labelledby="replay-title">
         <div className="dialog-heading">
           <div>
-            <span className="eyebrow">SAFE REPLAY</span>
-            <h2 id="replay-title">Review capture before publishing</h2>
+            <span className="eyebrow">{t('replay.eyebrow')}</span>
+            <h2 id="replay-title">{t('replay.title')}</h2>
           </div>
-          <span className={`replay-state ${progress.state}`}>{progress.state}</span>
+          <span className={`replay-state ${progress.state}`}>{t(replayStateKeys[progress.state])}</span>
         </div>
 
         <div className="capture-summary">
-          <div><span>Broker</span><strong>{capture.connection.host || 'Unknown'}</strong></div>
-          <div><span>Recorded</span><strong>{new Date(capture.exportedAt).toLocaleString()}</strong></div>
-          <div><span>Messages</span><strong>{capture.messages.length.toLocaleString()}</strong></div>
-          <div><span>Selected</span><strong>{selectedMessages.length.toLocaleString()}</strong></div>
+          <div><span>{t('common.broker')}</span><strong>{capture.connection.host || t('common.unknown')}</strong></div>
+          <div><span>{t('replay.recorded')}</span><strong>{formatDateTime(capture.exportedAt)}</strong></div>
+          <div><span>{t('common.messages')}</span><strong>{formatNumber(capture.messages.length)}</strong></div>
+          <div><span>{t('common.selected')}</span><strong>{formatNumber(selectedMessages.length)}</strong></div>
         </div>
 
         <div className="replay-preset-section">
           <div className="replay-preset-heading">
             <div>
-              <span className="eyebrow">REUSABLE SETTINGS</span>
-              <h3>Replay presets</h3>
+              <span className="eyebrow">{t('replay.presetsEyebrow')}</span>
+              <h3>{t('replay.presetsTitle')}</h3>
             </div>
-            <span className="counter-badge">{presets.length.toLocaleString()} SAVED</span>
+            <span className="counter-badge">{t('replay.savedCount', { count: formatNumber(presets.length) })}</span>
           </div>
           <div className="replay-preset-controls">
             <label className="replay-preset-field">
-              <span>Saved preset</span>
+              <span>{t('replay.savedPreset')}</span>
               <select
-                aria-label="Saved replay preset"
+                aria-label={t('replay.savedPreset')}
                 value={selectedPresetId}
                 disabled={active}
                 onChange={(event) => selectPreset(event.target.value)}
               >
-                <option value="">Custom settings / new preset</option>
+                <option value="">{t('replay.customPreset')}</option>
                 {presets.map((preset) => (
                   <option value={preset.id} key={preset.id}>{preset.name}</option>
                 ))}
               </select>
             </label>
             <label className="replay-preset-field">
-              <span>Preset name</span>
+              <span>{t('replay.presetName')}</span>
               <input
                 value={presetName}
                 maxLength={80}
                 disabled={active}
-                placeholder="Production to sandbox"
+                placeholder={t('replay.presetPlaceholder')}
                 onChange={(event) => setPresetName(event.target.value)}
               />
             </label>
@@ -196,7 +207,7 @@ export function ReplayDialog({
                 disabled={active || !presetName.trim() || (!includeIncoming && !includeOutgoing)}
                 onClick={savePreset}
               >
-                {selectedPresetId ? 'Update' : 'Save'}
+                {t(selectedPresetId ? 'common.update' : 'common.save')}
               </button>
               <button
                 className="danger-button"
@@ -204,26 +215,26 @@ export function ReplayDialog({
                 disabled={active || !selectedPresetId}
                 onClick={removePreset}
               >
-                Delete
+                {t('common.delete')}
               </button>
             </div>
           </div>
           <p className="replay-preset-help">
-            Stored only on this device. Presets contain replay settings, never broker credentials or capture payloads.
+            {t('replay.presetHelp')}
           </p>
           {presetFeedback.message && (
             <p
               className={`replay-preset-feedback ${presetFeedback.error ? 'invalid' : ''}`}
               role={presetFeedback.error ? 'alert' : 'status'}
             >
-              {presetFeedback.message}
+              {translateMessage(presetFeedback.message)}
             </p>
           )}
         </div>
 
         <div className="replay-options">
           <div className="direction-options">
-            <span>Directions to publish</span>
+            <span>{t('replay.directions')}</span>
             <label>
               <input
                 type="checkbox"
@@ -231,7 +242,7 @@ export function ReplayDialog({
                 disabled={active}
                 onChange={(event) => setIncludeOutgoing(event.target.checked)}
               />
-              Outgoing <small>{outgoing}</small>
+              {t('common.outgoing')} <small>{formatNumber(outgoing)}</small>
             </label>
             <label>
               <input
@@ -240,11 +251,11 @@ export function ReplayDialog({
                 disabled={active}
                 onChange={(event) => setIncludeIncoming(event.target.checked)}
               />
-              Incoming <small>{incoming}</small>
+              {t('common.incoming')} <small>{formatNumber(incoming)}</small>
             </label>
           </div>
           <label className="replay-speed">
-            <span>Replay speed</span>
+            <span>{t('replay.speed')}</span>
             <select
               value={speed}
               disabled={active}
@@ -260,14 +271,14 @@ export function ReplayDialog({
         <div className="topic-remap-section">
           <div className="topic-remap-heading">
             <div>
-              <span className="eyebrow">OPTIONAL SAFETY ROUTING</span>
-              <h3>Topic prefix remapping</h3>
+              <span className="eyebrow">{t('replay.routingEyebrow')}</span>
+              <h3>{t('replay.remapTitle')}</h3>
             </div>
-            <span className="counter-badge">{remappedMessages.length.toLocaleString()} CHANGED</span>
+            <span className="counter-badge">{t('replay.changedCount', { count: formatNumber(remappedMessages.length) })}</span>
           </div>
           <div className="topic-remap-fields">
             <label>
-              <span>Source prefix</span>
+              <span>{t('replay.sourcePrefix')}</span>
               <input
                 value={fromPrefix}
                 disabled={active}
@@ -277,7 +288,7 @@ export function ReplayDialog({
             </label>
             <span className="remap-arrow" aria-hidden="true">→</span>
             <label>
-              <span>Target prefix</span>
+              <span>{t('replay.targetPrefix')}</span>
               <input
                 value={toPrefix}
                 disabled={active}
@@ -287,19 +298,19 @@ export function ReplayDialog({
             </label>
           </div>
           <p className="topic-remap-help">
-            Leave both blank to keep original topics. A blank source prepends the target to every selected topic.
+            {t('replay.remapHelp')}
           </p>
           {remappedMessages.length > 0 && (
-            <div className="topic-remap-preview" aria-label="Topic remapping preview">
+            <div className="topic-remap-preview" aria-label={t('replay.remapPreview')}>
               {remappedMessages.slice(0, 3).map(({ message, topic }) => (
                 <div key={message.id}>
                   <span>{message.topic}</span>
                   <i>→</i>
-                  <strong>{topic || '(empty topic)'}</strong>
+                  <strong>{topic || t('common.emptyTopic')}</strong>
                 </div>
               ))}
               {remappedMessages.length > 3 && (
-                <small>and {(remappedMessages.length - 3).toLocaleString()} more message(s)</small>
+                <small>{t('common.moreMessages', { count: formatNumber(remappedMessages.length - 3) })}</small>
               )}
             </div>
           )}
@@ -308,21 +319,23 @@ export function ReplayDialog({
         <div className={`replay-warning ${invalidTopic ? 'invalid' : ''}`}>
           <strong>
             {invalidTopic
-              ? `Invalid replay topic “${invalidTopic.topic}”.`
+              ? t('replay.invalidTopic', { topic: invalidTopic.topic })
               : retained > 0
-                ? `${retained} retained message(s) selected.`
-                : 'No retained messages selected.'}
+                ? t('replay.retainedSelected', { count: formatNumber(retained) })
+                : t('replay.noRetained')}
           </strong>
           <span>
-            {invalidTopic?.error || `${formatBytes(selectedBytes)} will be published to the currently connected broker.`}
+            {invalidTopic?.error
+              ? translateMessage(invalidTopic.error)
+              : t('replay.publishBytes', { bytes: formatBytes(selectedBytes) })}
           </span>
         </div>
 
         {progress.state !== 'idle' && (
           <div className="replay-progress">
-            <progress max={Math.max(progress.total, 1)} value={progress.sent} aria-label="Replay progress" />
+            <progress max={Math.max(progress.total, 1)} value={progress.sent} aria-label={t('replay.progress')} />
             <p>
-              {progress.sent.toLocaleString()} / {progress.total.toLocaleString()} · {percentage}%
+              {formatNumber(progress.sent)} / {formatNumber(progress.total)} · {percentage}%
               {progress.currentTopic ? ` · ${progress.currentTopic}` : ''}
             </p>
           </div>
@@ -336,20 +349,20 @@ export function ReplayDialog({
               disabled={selectedMessages.length === 0 || Boolean(invalidTopic)}
               onClick={start}
             >
-              Start replay
+              {t('replay.start')}
             </button>
           )}
           {progress.state === 'running' && (
-            <button className="secondary-button" type="button" onClick={onPause}>Pause</button>
+            <button className="secondary-button" type="button" onClick={onPause}>{t('replay.pause')}</button>
           )}
           {progress.state === 'paused' && (
-            <button className="primary-button" type="button" onClick={onResume}>Resume</button>
+            <button className="primary-button" type="button" onClick={onResume}>{t('replay.resume')}</button>
           )}
           {active && (
-            <button className="danger-button" type="button" onClick={onCancel}>Cancel</button>
+            <button className="danger-button" type="button" onClick={onCancel}>{t('common.cancel')}</button>
           )}
           <button className="secondary-button" type="button" disabled={active} onClick={onClose}>
-            {progress.state === 'idle' ? 'Back' : 'Close'}
+            {t(progress.state === 'idle' ? 'common.back' : 'common.close')}
           </button>
         </div>
       </section>
