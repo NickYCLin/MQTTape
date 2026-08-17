@@ -4,6 +4,7 @@ import type {
   ConnectionConfig,
   MqttMessageRecord,
   MqttPacketEvent,
+  MqttSessionId,
   PublishRequest,
   StatusEvent,
   SubscribeRequest
@@ -54,12 +55,20 @@ export class MqttController {
   private packetListeners = new Set<PacketListener>()
   private bridgeCleanup: Array<() => void> = []
 
+  constructor(private readonly sessionId: MqttSessionId = 'default') {}
+
   activate(): void {
     if (window.mqttape && this.bridgeCleanup.length === 0) {
       this.bridgeCleanup = [
-        window.mqttape.onStatus((event) => this.emitStatus(event)),
-        window.mqttape.onMessage((message) => this.emitMessage(message)),
-        window.mqttape.onPacket((event) => this.emitPacket(event))
+        window.mqttape.onStatus((sessionId, event) => {
+          if (sessionId === this.sessionId) this.emitStatus(event)
+        }),
+        window.mqttape.onMessage((sessionId, message) => {
+          if (sessionId === this.sessionId) this.emitMessage(message)
+        }),
+        window.mqttape.onPacket((sessionId, event) => {
+          if (sessionId === this.sessionId) this.emitPacket(event)
+        })
       ]
     }
   }
@@ -85,7 +94,7 @@ export class MqttController {
 
   async connect(config: ConnectionConfig): Promise<void> {
     if (window.mqttape) {
-      await window.mqttape.connect(config)
+      await window.mqttape.connect(this.sessionId, config)
       return
     }
 
@@ -150,7 +159,7 @@ export class MqttController {
 
   async disconnect(): Promise<void> {
     if (window.mqttape) {
-      await window.mqttape.disconnect()
+      await window.mqttape.disconnect(this.sessionId)
       return
     }
 
@@ -168,7 +177,7 @@ export class MqttController {
   }
 
   async subscribe(request: SubscribeRequest): Promise<void> {
-    if (window.mqttape) return window.mqttape.subscribe(request)
+    if (window.mqttape) return window.mqttape.subscribe(this.sessionId, request)
     const client = this.requireWebClient()
 
     await new Promise<void>((resolve, reject) => {
@@ -180,7 +189,7 @@ export class MqttController {
   }
 
   async unsubscribe(topic: string): Promise<void> {
-    if (window.mqttape) return window.mqttape.unsubscribe(topic)
+    if (window.mqttape) return window.mqttape.unsubscribe(this.sessionId, topic)
     const client = this.requireWebClient()
 
     await new Promise<void>((resolve, reject) => {
@@ -192,7 +201,7 @@ export class MqttController {
   }
 
   async publish(request: PublishRequest): Promise<void> {
-    if (window.mqttape) return window.mqttape.publish(request)
+    if (window.mqttape) return window.mqttape.publish(this.sessionId, request)
     const client = this.requireWebClient()
     const topic = request.topic.trim()
     const topicError = publishTopicError(topic)
@@ -244,10 +253,11 @@ export class MqttController {
     })
   }
 
-  destroy(): void {
+  destroy(force = false): void {
     this.bridgeCleanup.forEach((cleanup) => cleanup())
     this.bridgeCleanup = []
-    this.webClient?.end(true)
+    if (window.mqttape) void window.mqttape.destroySession(this.sessionId).catch(() => {})
+    else this.webClient?.end(force)
     this.webClient = undefined
   }
 

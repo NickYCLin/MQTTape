@@ -24,6 +24,7 @@ import { MqttController } from '../lib/mqtt-controller'
 
 const MAX_MESSAGES = 5_000
 const WEB_PROFILE_KEY = 'mqttape:profiles:v1'
+const PROFILES_UPDATED_EVENT = 'mqttape:profiles-updated'
 
 interface ReplayControl {
   cancelled: boolean
@@ -121,8 +122,8 @@ function defaultConfig(isDesktop: boolean): ConnectionConfig {
   }
 }
 
-export function useMqttSession() {
-  const [controller] = useState(() => new MqttController())
+export function useMqttSession(sessionId = 'default') {
+  const [controller] = useState(() => new MqttController(sessionId))
 
   const [config, setConfig] = useState<ConnectionConfig>(() => defaultConfig(controller.isDesktop))
   const [status, setStatus] = useState<StatusEvent>({ state: 'disconnected' })
@@ -174,7 +175,12 @@ export function useMqttSession() {
       }
     }
     void loadProfiles()
-    return () => { mounted = false }
+    const handleProfilesUpdated = (): void => { void loadProfiles() }
+    window.addEventListener(PROFILES_UPDATED_EVENT, handleProfilesUpdated)
+    return () => {
+      mounted = false
+      window.removeEventListener(PROFILES_UPDATED_EVENT, handleProfilesUpdated)
+    }
   }, [])
 
   const run = useCallback(async (operation: () => Promise<void>): Promise<boolean> => {
@@ -234,6 +240,7 @@ export function useMqttSession() {
       return next.sort((left, right) => left.config.name.localeCompare(right.config.name))
     })
     setSelectedProfileId(savedProfile.id)
+    window.dispatchEvent(new Event(PROFILES_UPDATED_EVENT))
     if (
       window.mqttape &&
       (config.password || config.clientKeyPassphrase || config.will?.payload) &&
@@ -257,6 +264,7 @@ export function useMqttSession() {
       setProfiles((current) => current.filter((profile) => profile.id !== selectedProfileId))
       setSelectedProfileId('')
       setConfig(defaultConfig(controller.isDesktop))
+      window.dispatchEvent(new Event(PROFILES_UPDATED_EVENT))
     }
     return succeeded
   }, [controller.isDesktop, profiles, run, selectedProfileId])

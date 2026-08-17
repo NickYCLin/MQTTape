@@ -3,6 +3,13 @@ import type { LoRaWanDownlinkProvider } from './lorawan-downlink'
 export const DOWNLINK_HISTORY_STORAGE_KEY = 'mqttape:downlink-history:v1'
 export const MAX_DOWNLINK_HISTORY_EVENTS = 1_000
 
+export function downlinkHistoryStorageKey(namespace?: string): string {
+  const normalized = namespace?.trim()
+  return normalized
+    ? `${DOWNLINK_HISTORY_STORAGE_KEY}:${encodeURIComponent(normalized)}`
+    : DOWNLINK_HISTORY_STORAGE_KEY
+}
+
 export type LoRaWanDownlinkEventKind =
   | 'request'
   | 'queued'
@@ -176,10 +183,11 @@ export function isLoRaWanDownlinkHistoryFile(
 }
 
 export function readLoRaWanDownlinkHistory(
-  storage: Pick<DownlinkHistoryStorage, 'getItem'>
+  storage: Pick<DownlinkHistoryStorage, 'getItem'>,
+  namespace?: string
 ): LoRaWanDownlinkEvent[] {
   try {
-    const parsed: unknown = JSON.parse(storage.getItem(DOWNLINK_HISTORY_STORAGE_KEY) || 'null')
+    const parsed: unknown = JSON.parse(storage.getItem(downlinkHistoryStorageKey(namespace)) || 'null')
     if (!isLoRaWanDownlinkHistoryFile(parsed)) return []
     return mergeLoRaWanDownlinkHistoryEvents([], parsed.events)
   } catch {
@@ -189,11 +197,12 @@ export function readLoRaWanDownlinkHistory(
 
 export function writeLoRaWanDownlinkHistory(
   storage: Pick<DownlinkHistoryStorage, 'setItem'>,
-  events: LoRaWanDownlinkEvent[]
+  events: LoRaWanDownlinkEvent[],
+  namespace?: string
 ): boolean {
   try {
     storage.setItem(
-      DOWNLINK_HISTORY_STORAGE_KEY,
+      downlinkHistoryStorageKey(namespace),
       JSON.stringify(createLoRaWanDownlinkHistoryFile(events))
     )
     return true
@@ -203,10 +212,11 @@ export function writeLoRaWanDownlinkHistory(
 }
 
 export function clearLoRaWanDownlinkHistory(
-  storage: Pick<DownlinkHistoryStorage, 'removeItem'>
+  storage: Pick<DownlinkHistoryStorage, 'removeItem'>,
+  namespace?: string
 ): boolean {
   try {
-    storage.removeItem(DOWNLINK_HISTORY_STORAGE_KEY)
+    storage.removeItem(downlinkHistoryStorageKey(namespace))
     return true
   } catch {
     return false
@@ -214,9 +224,10 @@ export function clearLoRaWanDownlinkHistory(
 }
 
 export function canUseLoRaWanDownlinkHistoryStorage(
-  storage: Pick<DownlinkHistoryStorage, 'setItem' | 'removeItem'>
+  storage: Pick<DownlinkHistoryStorage, 'setItem' | 'removeItem'>,
+  namespace?: string
 ): boolean {
-  const probeKey = `${DOWNLINK_HISTORY_STORAGE_KEY}:probe`
+  const probeKey = `${downlinkHistoryStorageKey(namespace)}:probe`
   try {
     storage.setItem(probeKey, '1')
     storage.removeItem(probeKey)

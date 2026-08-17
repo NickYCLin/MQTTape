@@ -3,6 +3,7 @@ import type { LoRaWanDownlinkHistoryFile } from './lorawan-downlink-history'
 export type MqttProtocol = 'mqtt' | 'mqtts' | 'ws' | 'wss'
 export type MqttQos = 0 | 1 | 2
 export type MqttVersion = 4 | 5
+export type MqttSessionId = string
 export type MqttWillPayloadFormat = 'text' | 'hex' | 'base64'
 export type TlsFileKind = 'ca' | 'certificate' | 'key'
 export type ConnectionState =
@@ -201,11 +202,12 @@ export interface ReplayProgress {
 }
 
 export interface MqttapeBridge {
-  connect(config: ConnectionConfig): Promise<void>
-  disconnect(): Promise<void>
-  subscribe(request: SubscribeRequest): Promise<void>
-  unsubscribe(topic: string): Promise<void>
-  publish(request: PublishRequest): Promise<void>
+  connect(sessionId: MqttSessionId, config: ConnectionConfig): Promise<void>
+  disconnect(sessionId: MqttSessionId): Promise<void>
+  destroySession(sessionId: MqttSessionId): Promise<void>
+  subscribe(sessionId: MqttSessionId, request: SubscribeRequest): Promise<void>
+  unsubscribe(sessionId: MqttSessionId, topic: string): Promise<void>
+  publish(sessionId: MqttSessionId, request: PublishRequest): Promise<void>
   saveCapture(capture: CaptureFile): Promise<boolean>
   saveDownlinkHistory(history: LoRaWanDownlinkHistoryFile): Promise<boolean>
   listProfiles(): Promise<BrokerProfile[]>
@@ -215,8 +217,8 @@ export interface MqttapeBridge {
   getUpdateStatus(): Promise<AppUpdateStatus>
   checkForUpdates(): Promise<AppUpdateStatus>
   installUpdate(): Promise<boolean>
-  onStatus(listener: (event: StatusEvent) => void): () => void
-  onMessage(listener: (message: MqttMessageRecord) => void): () => void
-  onPacket(listener: (event: MqttPacketEvent) => void): () => void
+  onStatus(listener: (sessionId: MqttSessionId, event: StatusEvent) => void): () => void
+  onMessage(listener: (sessionId: MqttSessionId, message: MqttMessageRecord) => void): () => void
+  onPacket(listener: (sessionId: MqttSessionId, event: MqttPacketEvent) => void): () => void
   onUpdateStatus(listener: (status: AppUpdateStatus) => void): () => void
 }

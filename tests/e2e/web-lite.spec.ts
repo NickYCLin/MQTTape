@@ -3,12 +3,37 @@ import { Buffer } from 'node:buffer'
 import { createServer } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { expect, test } from '@playwright/test'
+import { Aedes } from 'aedes'
 import { generate, parser, type IPublishPacket } from 'mqtt-packet'
+import mqtt from 'mqtt'
 import { createWebSocketStream, WebSocketServer } from 'ws'
 import {
   DOWNLINK_HISTORY_STORAGE_KEY,
   type LoRaWanDownlinkHistoryFile
 } from '../../src/shared/lorawan-downlink-history'
+
+async function startWebSocketBroker() {
+  const broker = await Aedes.createBroker()
+  const server = createServer()
+  const websocketServer = new WebSocketServer({ server, path: '/mqtt' })
+  websocketServer.on('connection', (socket, request) => {
+    broker.handle(createWebSocketStream(socket), request)
+  })
+  await new Promise<void>((resolve, reject) => {
+    server.once('error', reject)
+    server.listen(0, '127.0.0.1', resolve)
+  })
+
+  return {
+    port: (server.address() as AddressInfo).port,
+    async close() {
+      websocketServer.clients.forEach((client) => client.terminate())
+      await new Promise<void>((resolve) => websocketServer.close(() => resolve()))
+      await new Promise<void>((resolve) => server.close(() => resolve()))
+      await new Promise<void>((resolve) => broker.close(resolve))
+    }
+  }
+}
 
 const downlinkHistory = {
   format: 'mqttape-downlink-history',
@@ -80,6 +105,103 @@ test('Web Lite starts and persists the selected interface language', async ({ pa
   await expect(page.getByLabel('介面語言')).toHaveValue('zh-TW')
   await expect(page.getByRole('heading', { name: '連線' })).toBeVisible()
   await expect(page.getByRole('note')).toContainText('此連接埠只是起始建議值')
+})
+
+test('Web Lite keeps multiple Broker workspaces isolated', async ({ page }) => {
+  await page.goto('/')
+  const activeWorkspace = page.locator('.session-workspace:not([hidden])')
+
+  await activeWorkspace.getByLabel('Profile name').fill('Primary Broker')
+  await activeWorkspace.getByLabel('Host').fill('primary.example.com')
+  await expect(page.getByRole('tab', { name: 'Primary Broker' })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Add Broker' }).click()
+  await expect(page.getByRole('tablist')).toContainText('Primary Broker')
+  await expect(page.getByRole('tab', { name: 'Broker 2' })).toHaveAttribute('aria-selected', 'true')
+  await expect(activeWorkspace.getByLabel('Host')).toHaveValue('')
+
+  await activeWorkspace.getByLabel('Profile name').fill('Secondary Broker')
+  await activeWorkspace.getByLabel('Host').fill('secondary.example.com')
+  await page.getByRole('tab', { name: 'Primary Broker' }).click()
+  await expect(activeWorkspace.getByLabel('Host')).toHaveValue('primary.example.com')
+
+  await page.getByLabel('Close Secondary Broker').click()
+  await expect(page.getByRole('tab', { name: 'Secondary Broker' })).toHaveCount(0)
+  await expect(page.getByRole('tab', { name: 'Primary Broker' })).toHaveAttribute('aria-selected', 'true')
+
+  for (let index = 0; index < 7; index += 1) {
+    await page.getByRole('button', { name: 'Add Broker' }).click()
+  }
+  await expect(page.getByRole('tab')).toHaveCount(8)
+  await expect(page.getByRole('button', { name: 'Add Broker' })).toBeDisabled()
+})
+
+test('Web Lite keeps two live Broker connections active in parallel', async ({ page }) => {
+  const firstBroker = await startWebSocketBroker()
+  const secondBroker = await startWebSocketBroker()
+
+  try {
+    await page.goto('/')
+    const activeWorkspace = page.locator('.session-workspace:not([hidden])')
+    await activeWorkspace.getByLabel('Profile name').fill('Live Broker A')
+    await activeWorkspace.getByLabel('Protocol').selectOption('ws')
+    await activeWorkspace.getByLabel('Host').fill('127.0.0.1')
+    await activeWorkspace.getByLabel('Port').fill(String(firstBroker.port))
+    await activeWorkspace.getByText('Advanced settings').click()
+    await activeWorkspace.getByLabel('MQTT version').selectOption('4')
+    await activeWorkspace.getByRole('button', { name: 'Connect' }).click()
+    await expect(activeWorkspace.getByRole('button', { name: 'Disconnect' })).toBeVisible()
+    await activeWorkspace.getByLabel('Subscription topic').fill('isolated/a')
+    await activeWorkspace.getByRole('button', { name: 'Add', exact: true }).click()
+
+    await page.getByRole('button', { name: 'Add Broker' }).click()
+    await activeWorkspace.getByLabel('Profile name').fill('Live Broker B')
+    await activeWorkspace.getByLabel('Protocol').selectOption('ws')
+    await activeWorkspace.getByLabel('Host').fill('127.0.0.1')
+    await activeWorkspace.getByLabel('Port').fill(String(secondBroker.port))
+    await activeWorkspace.getByText('Advanced settings').click()
+    await activeWorkspace.getByLabel('MQTT version').selectOption('4')
+    await activeWorkspace.getByRole('button', { name: 'Connect' }).click()
+    await expect(activeWorkspace.getByRole('button', { name: 'Disconnect' })).toBeVisible()
+    await activeWorkspace.getByLabel('Subscription topic').fill('isolated/b')
+    await activeWorkspace.getByRole('button', { name: 'Add', exact: true }).click()
+
+    const publisherA = mqtt.connect(`ws://127.0.0.1:${firstBroker.port}/mqtt`, {
+      protocolVersion: 4,
+      reconnectPeriod: 0
+    })
+    await new Promise<void>((resolve, reject) => {
+      publisherA.once('connect', () => resolve())
+      publisherA.once('error', reject)
+    })
+    await new Promise<void>((resolve, reject) => publisherA.publish(
+      'isolated/a',
+      'message-from-a',
+      { qos: 1 },
+      (error) => error ? reject(error) : resolve()
+    ))
+
+    const firstTab = page.getByRole('tab').filter({ hasText: 'Live Broker A' })
+    await expect(firstTab).toContainText('1')
+    await expect(activeWorkspace.getByText('message-from-a', { exact: true })).toHaveCount(0)
+    await firstTab.click()
+    await expect(activeWorkspace.getByText('message-from-a', { exact: true })).toBeVisible()
+    await expect(firstTab).not.toContainText('1')
+
+    const secondTab = page.getByRole('tab').filter({ hasText: 'Live Broker B' })
+    await expect(secondTab.locator('.status-dot')).toBeVisible()
+    await new Promise<void>((resolve, reject) => publisherA.end(false, {}, (error) => {
+      if (error) reject(error)
+      else resolve()
+    }))
+
+    await activeWorkspace.getByRole('button', { name: 'Disconnect' }).click()
+    await secondTab.click()
+    await activeWorkspace.getByRole('button', { name: 'Disconnect' }).click()
+  } finally {
+    await page.close()
+    await Promise.all([firstBroker.close(), secondBroker.close()])
+  }
 })
 
 test('Web Lite configures and validates MQTT Last Will', async ({ page }) => {

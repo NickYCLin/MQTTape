@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import type {
   CaptureFile,
   ConnectionConfig,
+  MqttSessionId,
   PublishRequest,
   SaveBrokerProfileRequest,
   SubscribeRequest,
@@ -22,12 +23,43 @@ import {
 let mainWindow: BrowserWindow | null = null
 let updateService: UpdateService | null = null
 
-const mqttService = new MqttService(
-  (status) => mainWindow?.webContents.send('mqttape:status', status),
-  (message) => mainWindow?.webContents.send('mqttape:message', message),
-  (event) => mainWindow?.webContents.send('mqttape:packet', event)
-)
+const MAX_MQTT_SESSIONS = 8
+const mqttServices = new Map<MqttSessionId, MqttService>()
 const selectedTlsFiles = new Set<string>()
+
+function assertSessionId(sessionId: MqttSessionId): void {
+  if (!/^[A-Za-z0-9_-]{1,128}$/.test(sessionId)) throw new Error('Invalid MQTT session identifier.')
+}
+
+function mqttServiceFor(sessionId: MqttSessionId): MqttService {
+  assertSessionId(sessionId)
+  const current = mqttServices.get(sessionId)
+  if (current) return current
+  if (mqttServices.size >= MAX_MQTT_SESSIONS) {
+    throw new Error(`Up to ${MAX_MQTT_SESSIONS} MQTT sessions can be open at the same time.`)
+  }
+  const service = new MqttService(
+    (status) => mainWindow?.webContents.send('mqttape:status', sessionId, status),
+    (message) => mainWindow?.webContents.send('mqttape:message', sessionId, message),
+    (event) => mainWindow?.webContents.send('mqttape:packet', sessionId, event)
+  )
+  mqttServices.set(sessionId, service)
+  return service
+}
+
+async function destroyMqttSession(sessionId: MqttSessionId): Promise<void> {
+  assertSessionId(sessionId)
+  const service = mqttServices.get(sessionId)
+  if (!service) return
+  mqttServices.delete(sessionId)
+  await service.disconnect()
+}
+
+async function disconnectAllMqttSessions(): Promise<void> {
+  const services = [...mqttServices.values()]
+  mqttServices.clear()
+  await Promise.all(services.map((service) => service.disconnect()))
+}
 
 async function assertTrustedTlsPaths(
   config: ConnectionConfig,
@@ -41,19 +73,36 @@ async function assertTrustedTlsPaths(
 }
 
 function registerIpcHandlers(profileStore: ProfileStore, updater: UpdateService): void {
-  ipcMain.handle('mqttape:connect', async (_event, config: ConnectionConfig) => {
+  ipcMain.handle('mqttape:connect', async (
+    _event,
+    sessionId: MqttSessionId,
+    config: ConnectionConfig
+  ) => {
     await assertTrustedTlsPaths(config, profileStore)
-    return mqttService.connect(config)
+    return mqttServiceFor(sessionId).connect(config)
   })
-  ipcMain.handle('mqttape:disconnect', () => mqttService.disconnect())
-  ipcMain.handle('mqttape:subscribe', (_event, request: SubscribeRequest) =>
-    mqttService.subscribe(request)
+  ipcMain.handle('mqttape:disconnect', (_event, sessionId: MqttSessionId) =>
+    mqttServiceFor(sessionId).disconnect()
   )
-  ipcMain.handle('mqttape:unsubscribe', (_event, topic: string) =>
-    mqttService.unsubscribe(topic)
+  ipcMain.handle('mqttape:destroy-session', (_event, sessionId: MqttSessionId) =>
+    destroyMqttSession(sessionId)
   )
-  ipcMain.handle('mqttape:publish', (_event, request: PublishRequest) =>
-    mqttService.publish(request)
+  ipcMain.handle('mqttape:subscribe', (
+    _event,
+    sessionId: MqttSessionId,
+    request: SubscribeRequest
+  ) =>
+    mqttServiceFor(sessionId).subscribe(request)
+  )
+  ipcMain.handle('mqttape:unsubscribe', (_event, sessionId: MqttSessionId, topic: string) =>
+    mqttServiceFor(sessionId).unsubscribe(topic)
+  )
+  ipcMain.handle('mqttape:publish', (
+    _event,
+    sessionId: MqttSessionId,
+    request: PublishRequest
+  ) =>
+    mqttServiceFor(sessionId).publish(request)
   )
   ipcMain.handle('mqttape:save-capture', async (_event, capture: CaptureFile) => {
     const result = await dialog.showSaveDialog(mainWindow!, {
@@ -208,7 +257,7 @@ if (!hasSingleInstanceLock) {
 }
 
 app.on('window-all-closed', () => {
-  void mqttService.disconnect()
+  void disconnectAllMqttSessions()
   if (process.platform !== 'darwin') app.quit()
 })
 
