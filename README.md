@@ -10,6 +10,7 @@ MQTTape 是一套可在桌面與瀏覽器使用的開源 MQTT 除錯工具。它
 - 桌面版支援 MQTT over TCP、TLS、WebSocket 與 Secure WebSocket
 - Web Lite 支援 `ws://` 與 `wss://` Broker
 - 支援 QoS 0、1、2 的發布與訂閱
+- 即時檢視 QoS 0、1、2 的控制封包流程、方向、Packet ID、DUP、Reason Code 與等待狀態
 - 建立、檢視及重播 MQTT 5 Publish Properties，包含 Content Type、Payload Format、Message Expiry、Response Topic、Correlation Data 與可重複的 User Properties
 - 接收時另會顯示 Topic Alias 與 Subscription Identifier；重播時會基於 MQTT 語意安全略過這兩項連線／訂閱中繼資料
 - 支援 Retained Message、Clean Session 與自動重新連線
@@ -171,6 +172,12 @@ Topic Prefix Remap 可以在重播前把擷取內容從 Production Topic 導向�
 
 使用 MQTT 5.0 連線時，重播會保留 Payload Format Indicator、Message Expiry、Content Type、Response Topic、Correlation Data 與同名重複的 User Properties。Topic Alias 只適用於原始連線，Subscription Identifier 則是 Broker 傳給訂閱端的資訊，因此兩者會在重播時略過。Response Topic 會保留原值，不會套用 Topic Prefix Remap，重播到其他環境前應在預覽中確認。若目前是 MQTT 3.1.1 連線，MQTTape 會在開始前阻擋含有 MQTT 5 發布屬性的重播，避免產生不相容封包。
 
+## QoS Packet Flow 檢視
+
+「封包流程」頁籤會把 MQTTape 在目前連線實際傳送與接收的控制封包組成發布交握。QoS 0 顯示單一 `PUBLISH`；QoS 1 顯示 `PUBLISH → PUBACK`；QoS 2 顯示 `PUBLISH → PUBREC → PUBREL → PUBCOMP`。每筆流程會標示訊息方向、Topic、QoS、Packet ID、TX／RX、DUP 重送、耗時，以及 MQTT 5 回覆中的 Reason Code。
+
+如果確認封包尚未抵達，流程會維持「等待中」並明確顯示下一個預期封包；Reason Code 大於或等於 `0x80` 時則標示為失敗，方便分辨網路延遲、Broker 拒絕與未完成的交握。封包流程最多保留本次工作階段最近 1,000 筆，只保存控制封包中繼資料，不會另外複製 Payload，也不會寫入擷取檔或本機儲存空間。
+
 ## Topic 檢視器
 
 「Topics」頁籤會把本次工作階段觀察到的流量整理成 MQTT Topic 階層。每一層會顯示傳入／傳出數量、最新 Payload 與 Retained 狀態；點選 Topic 可開啟對應的時間軸訊息。
@@ -197,7 +204,6 @@ Retained 面板是刻意設計成「依工作階段產生的快照」，不是 B
 ## Roadmap
 
 - CBOR、Protobuf 與 Sparkplug B Payload Viewer
-- QoS Packet Flow 檢視
 - 同時連線多個 Broker 工作階段
 - Last Will、自訂 WebSocket Header 與進階認證
 - 已簽章安裝程式與更多 CPU 架構

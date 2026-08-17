@@ -79,6 +79,35 @@ export interface MqttMessageRecord {
   properties?: MqttMessageProperties
 }
 
+export type MqttPacketCommand = 'publish' | 'puback' | 'pubrec' | 'pubrel' | 'pubcomp'
+export type MqttPacketDirection = 'sent' | 'received'
+export type MqttPacketFlowState = 'pending' | 'completed' | 'failed'
+
+export interface MqttPacketEvent {
+  id: string
+  timestamp: string
+  direction: MqttPacketDirection
+  command: MqttPacketCommand
+  messageId?: number
+  qos?: MqttQos
+  topic?: string
+  duplicate?: boolean
+  reasonCode?: number
+}
+
+export interface MqttPacketFlowRecord {
+  id: string
+  messageId?: number
+  messageDirection: MqttMessageRecord['direction']
+  topic: string
+  qos: MqttQos
+  startedAt: string
+  updatedAt: string
+  completedAt?: string
+  state: MqttPacketFlowState
+  steps: MqttPacketEvent[]
+}
+
 export interface StatusEvent {
   state: ConnectionState
   detail?: string
@@ -174,5 +203,6 @@ export interface MqttapeBridge {
   installUpdate(): Promise<boolean>
   onStatus(listener: (event: StatusEvent) => void): () => void
   onMessage(listener: (message: MqttMessageRecord) => void): () => void
+  onPacket(listener: (event: MqttPacketEvent) => void): () => void
   onUpdateStatus(listener: (status: AppUpdateStatus) => void): () => void
 }

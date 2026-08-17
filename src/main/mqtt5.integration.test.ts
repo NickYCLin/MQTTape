@@ -3,7 +3,7 @@ import { createServer, type Server } from 'node:net'
 import type { AddressInfo } from 'node:net'
 import { generate, parser, type IPublishPacket, type Packet } from 'mqtt-packet'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import type { ConnectionConfig, MqttMessageRecord, StatusEvent } from '../shared/contracts'
+import type { ConnectionConfig, MqttMessageRecord, MqttPacketEvent, StatusEvent } from '../shared/contracts'
 import { MqttService } from './mqtt-service'
 
 const packetOptions = { protocolVersion: 5 }
@@ -106,9 +106,11 @@ describe('MqttService MQTT 5 integration', () => {
     receivedPublishes.length = 0
     const statuses: StatusEvent[] = []
     const messages: MqttMessageRecord[] = []
+    const packets: MqttPacketEvent[] = []
     const service = new MqttService(
       (status) => statuses.push(status),
-      (message) => messages.push(message)
+      (message) => messages.push(message),
+      (packet) => packets.push(packet)
     )
     const config: ConnectionConfig = {
       name: 'MQTT 5 test broker',
@@ -196,6 +198,11 @@ describe('MqttService MQTT 5 integration', () => {
           contentType: 'application/json'
         }
       })
+    ]))
+    expect(packets).toEqual(expect.arrayContaining([
+      expect.objectContaining({ direction: 'sent', command: 'publish', qos: 1, topic: 'mqttape/mqtt5' }),
+      expect.objectContaining({ direction: 'received', command: 'puback', reasonCode: 0 }),
+      expect.objectContaining({ direction: 'received', command: 'publish', qos: 0, topic: 'mqttape/mqtt5' })
     ]))
 
     await service.disconnect()

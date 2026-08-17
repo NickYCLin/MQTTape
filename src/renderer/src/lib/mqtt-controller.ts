@@ -3,6 +3,7 @@ import { Buffer } from 'buffer'
 import type {
   ConnectionConfig,
   MqttMessageRecord,
+  MqttPacketEvent,
   PublishRequest,
   StatusEvent,
   SubscribeRequest
@@ -14,9 +15,11 @@ import {
   toMqttPublishProperties
 } from '../../../shared/mqtt-properties'
 import { publishTopicError } from '../../../shared/mqtt-topic'
+import { createMqttPacketEvent } from '../../../shared/packet-flow'
 
 type StatusListener = (event: StatusEvent) => void
 type MessageListener = (message: MqttMessageRecord) => void
+type PacketListener = (event: MqttPacketEvent) => void
 
 function createId(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`
@@ -47,13 +50,15 @@ export class MqttController {
   private webClient: MqttClient | undefined
   private statusListeners = new Set<StatusListener>()
   private messageListeners = new Set<MessageListener>()
+  private packetListeners = new Set<PacketListener>()
   private bridgeCleanup: Array<() => void> = []
 
   activate(): void {
     if (window.mqttape && this.bridgeCleanup.length === 0) {
       this.bridgeCleanup = [
         window.mqttape.onStatus((event) => this.emitStatus(event)),
-        window.mqttape.onMessage((message) => this.emitMessage(message))
+        window.mqttape.onMessage((message) => this.emitMessage(message)),
+        window.mqttape.onPacket((event) => this.emitPacket(event))
       ]
     }
   }
@@ -70,6 +75,11 @@ export class MqttController {
   onMessage(listener: MessageListener): () => void {
     this.messageListeners.add(listener)
     return () => this.messageListeners.delete(listener)
+  }
+
+  onPacket(listener: PacketListener): () => void {
+    this.packetListeners.add(listener)
+    return () => this.packetListeners.delete(listener)
   }
 
   async connect(config: ConnectionConfig): Promise<void> {
@@ -243,6 +253,14 @@ export class MqttController {
     client.on('error', (error) =>
       this.emitStatus({ state: 'error', detail: error.message })
     )
+    client.on('packetsend', (packet) => {
+      const event = createMqttPacketEvent(packet, 'sent')
+      if (event) this.emitPacket(event)
+    })
+    client.on('packetreceive', (packet) => {
+      const event = createMqttPacketEvent(packet, 'received')
+      if (event) this.emitPacket(event)
+    })
     client.on('message', (topic, payload, packet) => {
       const bytes = new Uint8Array(payload)
       this.emitMessage({
@@ -272,5 +290,9 @@ export class MqttController {
 
   private emitMessage(message: MqttMessageRecord): void {
     this.messageListeners.forEach((listener) => listener(message))
+  }
+
+  private emitPacket(event: MqttPacketEvent): void {
+    this.packetListeners.forEach((listener) => listener(event))
   }
 }

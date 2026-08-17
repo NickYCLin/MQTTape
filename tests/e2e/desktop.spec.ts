@@ -35,6 +35,7 @@ test('desktop shell starts with the restricted preload bridge', async () => {
       'connect',
       'getUpdateStatus',
       'onMessage',
+      'onPacket',
       'saveCapture',
       'saveDownlinkHistory'
     ]))

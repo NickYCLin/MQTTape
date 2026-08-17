@@ -6,6 +6,7 @@ All notable changes to MQTTape are documented in this file.
 
 ### Added
 
+- Session-only QoS 0/1/2 packet-flow inspection with TX/RX direction, Packet ID, DUP retransmission, MQTT 5 Reason Code, duration, and pending-handshake diagnostics.
 - Local LoRaWAN downlink history that retains up to 1,000 parsed events across restarts without storing raw MQTT payloads or broker credentials.
 - Versioned downlink-history JSON export plus an in-app action to clear saved events.
 - Playwright UI smoke tests for Web Lite language and downlink-history flows plus the Electron preload bridge.

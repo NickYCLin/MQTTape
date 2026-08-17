@@ -4,6 +4,7 @@ import {
   DownloadIcon,
   DownlinkIcon,
   GithubIcon,
+  PacketFlowIcon,
   PlayIcon,
   SearchIcon,
   TapeIcon,
@@ -15,6 +16,7 @@ import {
 import { CaptureExportDialog } from './components/CaptureExportDialog'
 import { MessageTimeline } from './components/MessageTimeline'
 import { LoRaWanDownlinkTracker } from './components/LoRaWanDownlinkTracker'
+import { PacketFlowViewer } from './components/PacketFlowViewer'
 import { PublishComposer } from './components/PublishComposer'
 import { ReplayDialog } from './components/ReplayDialog'
 import { SubscriptionPanel } from './components/SubscriptionPanel'
@@ -38,22 +40,25 @@ const statusLabelKeys: Record<ConnectionState, TranslationKey> = {
   error: 'status.error'
 }
 
-type SessionView = 'timeline' | 'topics' | 'downlinks'
+type SessionView = 'timeline' | 'packets' | 'topics' | 'downlinks'
 
 const sessionTitleKeys: Record<SessionView, TranslationKey> = {
   timeline: 'session.timeline',
+  packets: 'session.packetFlows',
   topics: 'session.topicTree',
   downlinks: 'session.downlinks'
 }
 
 const sessionFilterPlaceholderKeys: Record<SessionView, TranslationKey> = {
   timeline: 'session.filterMessagesPlaceholder',
+  packets: 'session.filterPacketFlowsPlaceholder',
   topics: 'session.filterTopicsPlaceholder',
   downlinks: 'session.filterDownlinksPlaceholder'
 }
 
 const sessionFilterLabelKeys: Record<SessionView, TranslationKey> = {
   timeline: 'session.filterMessages',
+  packets: 'session.filterPacketFlows',
   topics: 'session.filterTopics',
   downlinks: 'session.filterDownlinks'
 }
@@ -247,6 +252,15 @@ export default function App() {
                   <span>{t('session.timelineTab')}</span>
                 </button>
                 <button
+                  className={activeView === 'packets' ? 'active' : ''}
+                  type="button"
+                  aria-pressed={activeView === 'packets'}
+                  onClick={() => setActiveView('packets')}
+                >
+                  <PacketFlowIcon width={15} height={15} />
+                  <span>{t('session.packetFlowsTab')}</span>
+                </button>
+                <button
                   className={activeView === 'topics' ? 'active' : ''}
                   type="button"
                   aria-pressed={activeView === 'topics'}
@@ -285,10 +299,10 @@ export default function App() {
                 <button
                   className="btn ghost icon"
                   type="button"
-                  title={t('session.clearMessages')}
-                  aria-label={t('session.clearMessages')}
-                  disabled={session.messages.length === 0}
-                  onClick={session.clearMessages}
+                  title={t(activeView === 'packets' ? 'session.clearPacketFlows' : 'session.clearMessages')}
+                  aria-label={t(activeView === 'packets' ? 'session.clearPacketFlows' : 'session.clearMessages')}
+                  disabled={activeView === 'packets' ? session.packetFlows.length === 0 : session.messages.length === 0}
+                  onClick={activeView === 'packets' ? session.clearPacketFlows : session.clearMessages}
                 >
                   <TrashIcon width={16} height={16} />
                 </button>
@@ -334,6 +348,8 @@ export default function App() {
             <div className={`stage-scroll ${activeView !== 'timeline' ? 'no-scroll' : ''}`}>
               {activeView === 'timeline' ? (
                 <MessageTimeline messages={visibleMessages} />
+              ) : activeView === 'packets' ? (
+                <PacketFlowViewer flows={session.packetFlows} query={query} />
               ) : activeView === 'topics' ? (
                 <TopicExplorer
                   messages={session.messages}

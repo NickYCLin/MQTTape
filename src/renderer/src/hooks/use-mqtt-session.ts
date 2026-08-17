@@ -4,6 +4,7 @@ import type {
   CaptureFile,
   ConnectionConfig,
   MqttMessageRecord,
+  MqttPacketFlowRecord,
   MqttPublishProperties,
   MqttQos,
   ReplayOptions,
@@ -17,6 +18,7 @@ import {
 } from '../../../shared/mqtt-properties'
 import { publishTopicError } from '../../../shared/mqtt-topic'
 import { createReplayPlan, replayDelay, replayTimingScale } from '../../../shared/replay'
+import { updateMqttPacketFlows } from '../../../shared/packet-flow'
 import { MqttController } from '../lib/mqtt-controller'
 
 const MAX_MESSAGES = 5_000
@@ -121,6 +123,7 @@ export function useMqttSession() {
   const [config, setConfig] = useState<ConnectionConfig>(() => defaultConfig(controller.isDesktop))
   const [status, setStatus] = useState<StatusEvent>({ state: 'disconnected' })
   const [messages, setMessages] = useState<MqttMessageRecord[]>([])
+  const [packetFlows, setPacketFlows] = useState<MqttPacketFlowRecord[]>([])
   const [subscriptions, setSubscriptions] = useState<Map<string, MqttQos>>(new Map())
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -138,6 +141,9 @@ export function useMqttSession() {
         return next.length > MAX_MESSAGES ? next.slice(0, MAX_MESSAGES) : next
       })
     })
+    const removePacket = controller.onPacket((event) => {
+      setPacketFlows((current) => updateMqttPacketFlows(current, event))
+    })
 
     return () => {
       if (replayControlRef.current) {
@@ -146,6 +152,7 @@ export function useMqttSession() {
       }
       removeStatus()
       removeMessage()
+      removePacket()
       controller.destroy()
     }
   }, [controller])
@@ -478,6 +485,7 @@ export function useMqttSession() {
     selectTlsFile,
     status,
     messages,
+    packetFlows,
     subscriptions,
     stats,
     error,
@@ -496,6 +504,7 @@ export function useMqttSession() {
     cancelReplay,
     resetReplay,
     clearMessages: () => setMessages([]),
+    clearPacketFlows: () => setPacketFlows([]),
     makeCapture
   }
 }

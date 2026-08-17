@@ -163,6 +163,17 @@ export function TopicTreeIcon(props: IconProps) {
   )
 }
 
+export function PacketFlowIcon(props: IconProps) {
+  return (
+    <svg {...baseProps} {...props}>
+      <path d="M4 7h13M14 4l3 3-3 3" />
+      <path d="M20 17H7M10 14l-3 3 3 3" />
+      <circle cx="4" cy="7" r="1.5" fill="currentColor" stroke="none" />
+      <circle cx="20" cy="17" r="1.5" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}
+
 /* Application chrome ----------------------------------------------------- */
 
 export function PaletteIcon(props: IconProps) {

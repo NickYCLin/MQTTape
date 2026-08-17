@@ -5,6 +5,7 @@ import type {
   CaptureFile,
   ConnectionConfig,
   MqttMessageRecord,
+  MqttPacketEvent,
   MqttapeBridge,
   PublishRequest,
   SaveBrokerProfileRequest,
@@ -44,6 +45,12 @@ const bridge: MqttapeBridge = {
       listener(message)
     ipcRenderer.on('mqttape:message', wrapped)
     return () => ipcRenderer.removeListener('mqttape:message', wrapped)
+  },
+  onPacket: (listener: (event: MqttPacketEvent) => void) => {
+    const wrapped = (_event: Electron.IpcRendererEvent, packet: MqttPacketEvent): void =>
+      listener(packet)
+    ipcRenderer.on('mqttape:packet', wrapped)
+    return () => ipcRenderer.removeListener('mqttape:packet', wrapped)
   },
   onUpdateStatus: (listener: (status: AppUpdateStatus) => void) => {
     const wrapped = (_event: Electron.IpcRendererEvent, status: AppUpdateStatus): void =>
