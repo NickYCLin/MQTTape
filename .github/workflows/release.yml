@@ -77,8 +77,14 @@ jobs:
             future updates in the background. The Windows portable build and
             unsigned macOS builds continue to use manual downloads.
 
-            Windows and macOS packages are unsigned. Review the repository and
-            checksum file before bypassing SmartScreen or Gatekeeper warnings.
+            ## Code signing policy
+
+            Free code signing provided by [SignPath.io](https://about.signpath.io/),
+            certificate by [SignPath Foundation](https://signpath.org/).
+            See the [project policy](https://github.com/NickYCLin/MQTTape#code-signing-policy)
+            for signing roles and privacy details. Windows packages published
+            before enrollment and signing-workflow activation remain unsigned.
+            macOS packages are currently unsigned.
         run: |
           gh release create "$GITHUB_REF_NAME" artifacts/* \
             --repo "$GITHUB_REPOSITORY" \

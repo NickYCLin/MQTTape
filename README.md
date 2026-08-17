@@ -54,6 +54,27 @@ Web Lite is published at <https://nickyclin.github.io/MQTTape/>. Because GitHub
 Pages uses HTTPS, remote brokers must normally expose a trusted `wss://` endpoint;
 browsers block insecure `ws://` connections from an HTTPS page.
 
+## Downloads
+
+Download the latest desktop packages and checksum manifest from
+[GitHub Releases](https://github.com/NickYCLin/MQTTape/releases/latest). Windows
+users can choose the `Setup` installer for automatic application updates or the
+portable executable for manual updates.
+
+## Code signing policy
+
+Free code signing provided by [SignPath.io](https://about.signpath.io/), certificate by
+[SignPath Foundation](https://signpath.org/).
+
+- Committer and reviewer: [NickYCLin](https://github.com/NickYCLin)
+- Approver: [NickYCLin](https://github.com/NickYCLin)
+- Every release signing request requires manual approval by the approver.
+- Privacy policy: [PRIVACY.md](PRIVACY.md)
+
+Windows packages published before the SignPath enrollment and signing workflow
+are complete remain unsigned. Verify those downloads with the release checksum
+manifest before running them.
+
 ## Profiles and mTLS
 
 Desktop profiles are stored in the Electron user-data directory. Passwords and
