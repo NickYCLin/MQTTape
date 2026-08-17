@@ -6,6 +6,8 @@ All notable changes to MQTTape are documented in this file.
 
 ### Added
 
+- Up to eight simultaneous, tabbed Broker sessions with isolated MQTT clients, subscriptions, captures, packet flows, replay state, and background unread counts.
+- Broker-scoped LoRaWAN downlink history plus live profile-list synchronization between open sessions.
 - MQTT Last Will configuration for UTF-8, Hex, and Base64 payloads, QoS, Retain, and MQTT 5 Will Delay, Message Expiry, Content Type, and Payload Format properties.
 - Encrypted desktop-profile storage for Last Will payloads, Web Lite payload omission, and capture-file privacy exclusion.
 - Protobuf schema-bundle import, explicit message-type selection, CSP-safe wire decoding, local schema persistence, unknown-field diagnostics, and type-preserving trees.

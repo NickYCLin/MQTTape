@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type ChangeEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
 import { ConnectionPanel } from './components/ConnectionPanel'
 import {
   DownloadIcon,
@@ -25,7 +25,12 @@ import { TopicExplorer } from './components/TopicExplorer'
 import { UpdateControl } from './components/UpdateControl'
 import { useMqttSession } from './hooks/use-mqtt-session'
 import { filterMessages, formatBytes } from '../../shared/message'
-import type { CaptureFile, ConnectionState } from '../../shared/contracts'
+import type {
+  CaptureFile,
+  ConnectionConfig,
+  ConnectionState,
+  StatusEvent
+} from '../../shared/contracts'
 import { isCaptureFile } from '../../shared/capture'
 import { useI18n } from './i18n'
 import type { TranslationKey } from './lib/i18n'
@@ -63,9 +68,44 @@ const sessionFilterLabelKeys: Record<SessionView, TranslationKey> = {
   downlinks: 'session.filterDownlinks'
 }
 
-export default function App() {
-  const { language, setLanguage, t, translateMessage, formatNumber } = useI18n()
-  const session = useMqttSession()
+const MAX_BROKER_SESSIONS = 8
+
+interface BrokerSessionSummary {
+  id: string
+  config: ConnectionConfig
+  status: StatusEvent
+  isDesktop: boolean
+  messageCount: number
+}
+
+interface BrokerSessionTab {
+  id: string
+  unread: number
+  lastMessageCount: number
+}
+
+interface BrokerWorkspaceProps {
+  sessionId: string
+  onSummary: (summary: BrokerSessionSummary) => void
+}
+
+function createSessionId(): string {
+  return `session_${globalThis.crypto?.randomUUID?.() ?? `${Date.now()}_${Math.random().toString(36).slice(2)}`}`
+    .replace(/-/g, '_')
+}
+
+function downlinkHistoryNamespace(
+  selectedProfileId: string,
+  config: ConnectionConfig
+): string {
+  if (selectedProfileId) return `profile:${selectedProfileId}`
+  if (!config.host.trim()) return ''
+  return `endpoint:${config.protocol}://${config.host.trim().toLocaleLowerCase()}:${config.port}${config.path}`
+}
+
+function BrokerWorkspace({ sessionId, onSummary }: BrokerWorkspaceProps) {
+  const { t, translateMessage, formatNumber } = useI18n()
+  const session = useMqttSession(sessionId)
   const [query, setQuery] = useState('')
   const [activeView, setActiveView] = useState<SessionView>('timeline')
   const [captureToExport, setCaptureToExport] = useState<CaptureFile | null>(null)
@@ -77,9 +117,20 @@ export default function App() {
     () => filterMessages(session.messages, query),
     [query, session.messages]
   )
-  const endpoint = `${session.config.host}:${session.config.port}`
-  const statusDetail = session.status.detail
-    || (connected ? endpoint : t(session.isDesktop ? 'mode.desktopFull' : 'mode.webSocketLite'))
+  const downlinkStorageNamespace = useMemo(
+    () => downlinkHistoryNamespace(session.selectedProfileId, session.config),
+    [session.config, session.selectedProfileId]
+  )
+
+  useEffect(() => {
+    onSummary({
+      id: sessionId,
+      config: session.config,
+      status: session.status,
+      isDesktop: session.isDesktop,
+      messageCount: session.messages.length
+    })
+  }, [onSummary, session.config, session.isDesktop, session.messages.length, session.status, sessionId])
 
   const saveCapture = async (capture: CaptureFile): Promise<boolean> => {
     try {
@@ -138,51 +189,7 @@ export default function App() {
   }
 
   return (
-    <div className="app">
-      <header className="topbar">
-        <div className="brand">
-          <span className="brand-mark" aria-hidden="true"><TapeIcon width={20} height={20} /></span>
-          <span className="brand-text">
-            <strong>MQTTape</strong>
-            <small>{t('app.tagline')}</small>
-          </span>
-        </div>
-
-        <div className={`status status-${session.status.state}`}>
-          <span className="status-dot" aria-hidden="true" />
-          <span className="status-text">
-            <strong>{t(statusLabelKeys[session.status.state])}</strong>
-            <small title={statusDetail}>{statusDetail}</small>
-          </span>
-        </div>
-
-        <div className="topbar-actions">
-          <UpdateControl />
-          <ThemeMenu />
-          <label className="select-inline">
-            <span className="sr-only">{t('language.label')}</span>
-            <select
-              aria-label={t('language.label')}
-              value={language}
-              onChange={(event) => setLanguage(event.target.value as 'en' | 'zh-TW')}
-            >
-              <option value="en">{t('language.english')}</option>
-              <option value="zh-TW">{t('language.traditionalChinese')}</option>
-            </select>
-          </label>
-          <a
-            className="btn ghost icon"
-            href="https://github.com/NickYCLin/MQTTape"
-            target="_blank"
-            rel="noreferrer"
-            title={t('app.github')}
-            aria-label={t('app.github')}
-          >
-            <GithubIcon width={16} height={16} />
-          </a>
-        </div>
-      </header>
-
+    <>
       <div className="workspace">
         <aside className="sidebar">
           <ConnectionPanel
@@ -361,8 +368,10 @@ export default function App() {
                 />
               ) : (
                 <LoRaWanDownlinkTracker
+                  key={downlinkStorageNamespace}
                   messages={session.messages}
                   query={query}
+                  storageNamespace={downlinkStorageNamespace}
                   onExport={saveDownlinkHistory}
                 />
               )}
@@ -411,6 +420,210 @@ export default function App() {
             setReplayCapture(null)
           }}
         />
+      )}
+    </>
+  )
+}
+
+export default function App() {
+  const { language, setLanguage, t, formatNumber } = useI18n()
+  const [initialSessionId] = useState(createSessionId)
+  const [sessions, setSessions] = useState<BrokerSessionTab[]>([
+    { id: initialSessionId, unread: 0, lastMessageCount: 0 }
+  ])
+  const [activeSessionId, setActiveSessionId] = useState(initialSessionId)
+  const [summaries, setSummaries] = useState<Record<string, BrokerSessionSummary>>({})
+  const [sessionNotice, setSessionNotice] = useState<string | null>(null)
+
+  const handleSummary = useCallback((summary: BrokerSessionSummary): void => {
+    setSummaries((current) => {
+      if (current[summary.id] === summary) return current
+      return { ...current, [summary.id]: summary }
+    })
+    setSessions((current) => current.map((tab) => {
+      if (tab.id !== summary.id) return tab
+      const addedMessages = Math.max(0, summary.messageCount - tab.lastMessageCount)
+      return {
+        ...tab,
+        unread: summary.id === activeSessionId ? 0 : tab.unread + addedMessages,
+        lastMessageCount: summary.messageCount
+      }
+    }))
+  }, [activeSessionId])
+
+  const selectSession = (sessionId: string): void => {
+    setActiveSessionId(sessionId)
+    setSessions((current) => current.map((tab) => (
+      tab.id === sessionId ? { ...tab, unread: 0 } : tab
+    )))
+  }
+
+  const addSession = (): void => {
+    if (sessions.length >= MAX_BROKER_SESSIONS) {
+      setSessionNotice(t('sessions.limit', { count: MAX_BROKER_SESSIONS }))
+      return
+    }
+    const id = createSessionId()
+    setSessions((current) => [...current, { id, unread: 0, lastMessageCount: 0 }])
+    setActiveSessionId(id)
+    setSessionNotice(null)
+  }
+
+  const closeSession = (sessionId: string): void => {
+    if (sessions.length <= 1) return
+    const closingIndex = sessions.findIndex(({ id }) => id === sessionId)
+    const remaining = sessions.filter(({ id }) => id !== sessionId)
+    setSessions(remaining)
+    setSummaries((current) => {
+      const next = { ...current }
+      delete next[sessionId]
+      return next
+    })
+    if (activeSessionId === sessionId) {
+      setActiveSessionId(remaining[Math.min(closingIndex, remaining.length - 1)].id)
+    }
+  }
+
+  const activeSummary = summaries[activeSessionId]
+  const activeStatus = activeSummary?.status ?? { state: 'disconnected' as const }
+  const activeConfig = activeSummary?.config
+  const activeEndpoint = activeConfig?.host.trim()
+    ? `${activeConfig.host}:${activeConfig.port}`
+    : ''
+  const activeStatusDetail = activeStatus.detail
+    || activeEndpoint
+    || t(activeSummary?.isDesktop ? 'mode.desktopFull' : 'mode.webSocketLite')
+
+  return (
+    <div className="app">
+      <header className="topbar">
+        <div className="brand">
+          <span className="brand-mark" aria-hidden="true"><TapeIcon width={20} height={20} /></span>
+          <span className="brand-text">
+            <strong>MQTTape</strong>
+            <small>{t('app.tagline')}</small>
+          </span>
+        </div>
+
+        <div className={`status status-${activeStatus.state}`}>
+          <span className="status-dot" aria-hidden="true" />
+          <span className="status-text">
+            <strong>{t(statusLabelKeys[activeStatus.state])}</strong>
+            <small title={activeStatusDetail}>{activeStatusDetail}</small>
+          </span>
+        </div>
+
+        <div className="topbar-actions">
+          <UpdateControl />
+          <ThemeMenu />
+          <label className="select-inline">
+            <span className="sr-only">{t('language.label')}</span>
+            <select
+              aria-label={t('language.label')}
+              value={language}
+              onChange={(event) => setLanguage(event.target.value as 'en' | 'zh-TW')}
+            >
+              <option value="en">{t('language.english')}</option>
+              <option value="zh-TW">{t('language.traditionalChinese')}</option>
+            </select>
+          </label>
+          <a
+            className="btn ghost icon"
+            href="https://github.com/NickYCLin/MQTTape"
+            target="_blank"
+            rel="noreferrer"
+            title={t('app.github')}
+            aria-label={t('app.github')}
+          >
+            <GithubIcon width={16} height={16} />
+          </a>
+        </div>
+      </header>
+
+      <nav className="session-tabs" aria-label={t('sessions.label')}>
+        <div className="session-tabs-scroll" role="tablist">
+          {sessions.map((tab, index) => {
+            const summary = summaries[tab.id]
+            const label = summary?.config.name.trim()
+              || summary?.config.host.trim()
+              || t('sessions.untitled', { count: index + 1 })
+            const state = summary?.status.state ?? 'disconnected'
+            return (
+              <div className={`session-tab status-${state}`} key={tab.id} role="presentation">
+                <button
+                  className={activeSessionId === tab.id ? 'active' : ''}
+                  id={`tab-${tab.id}`}
+                  type="button"
+                  role="tab"
+                  aria-selected={activeSessionId === tab.id}
+                  aria-controls={`workspace-${tab.id}`}
+                  title={label}
+                  onClick={() => selectSession(tab.id)}
+                >
+                  <span className="status-dot" aria-hidden="true" />
+                  <span>{label}</span>
+                  {tab.unread > 0 && (
+                    <small aria-label={t('sessions.unread', { count: tab.unread })}>
+                      {formatNumber(tab.unread)}
+                    </small>
+                  )}
+                </button>
+                {sessions.length > 1 && (
+                  <button
+                    className="session-tab-close"
+                    type="button"
+                    aria-label={t('sessions.close', { name: label })}
+                    title={t('sessions.close', { name: label })}
+                    onClick={() => closeSession(tab.id)}
+                  >
+                    <XIcon width={13} height={13} />
+                  </button>
+                )}
+              </div>
+            )
+          })}
+        </div>
+        <button
+          className="btn ghost session-add"
+          type="button"
+          disabled={sessions.length >= MAX_BROKER_SESSIONS}
+          title={sessions.length >= MAX_BROKER_SESSIONS
+            ? t('sessions.limit', { count: MAX_BROKER_SESSIONS })
+            : t('sessions.add')}
+          aria-label={t('sessions.add')}
+          onClick={addSession}
+        >
+          <span aria-hidden="true">＋</span>
+          <span>{t('sessions.add')}</span>
+        </button>
+      </nav>
+
+      <div className="session-host">
+        {sessions.map((tab) => (
+          <section
+            className="session-workspace"
+            id={`workspace-${tab.id}`}
+            key={tab.id}
+            role="tabpanel"
+            aria-labelledby={`tab-${tab.id}`}
+            aria-hidden={activeSessionId !== tab.id}
+            hidden={activeSessionId !== tab.id}
+          >
+            <BrokerWorkspace sessionId={tab.id} onSummary={handleSummary} />
+          </section>
+        ))}
+      </div>
+
+      {sessionNotice && (
+        <div className="toast" role="alert">
+          <div className="toast-copy">
+            <strong>{t('sessions.label')}</strong>
+            <span>{sessionNotice}</span>
+          </div>
+          <button type="button" aria-label={t('error.dismiss')} onClick={() => setSessionNotice(null)}>
+            <XIcon width={16} height={16} />
+          </button>
+        </div>
       )}
     </div>
   )

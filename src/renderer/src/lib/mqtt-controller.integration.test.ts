@@ -141,6 +141,87 @@ describe('MqttController Web Lite integration', () => {
     controller.destroy()
   })
 
+  it('keeps simultaneous Broker sessions and their messages isolated', async () => {
+    const messagesA: MqttMessageRecord[] = []
+    const messagesB: MqttMessageRecord[] = []
+    const controllerA = new MqttController('session_a')
+    const controllerB = new MqttController('session_b')
+    const removeMessageA = controllerA.onMessage((message) => messagesA.push(message))
+    const removeMessageB = controllerB.onMessage((message) => messagesB.push(message))
+    const commonConfig: ConnectionConfig = {
+      name: 'Parallel WebSocket broker',
+      protocol: 'ws',
+      host: '127.0.0.1',
+      port,
+      path: 'mqtt',
+      clientId: 'mqttape_parallel_base',
+      username: '',
+      password: '',
+      mqttVersion: 4,
+      clean: true,
+      keepalive: 30,
+      reconnectPeriod: 0,
+      rejectUnauthorized: true,
+      caPath: '',
+      clientCertificatePath: '',
+      clientKeyPath: '',
+      clientKeyPassphrase: ''
+    }
+
+    try {
+      await Promise.all([
+        controllerA.connect({ ...commonConfig, clientId: 'mqttape_parallel_a' }),
+        controllerB.connect({ ...commonConfig, clientId: 'mqttape_parallel_b' })
+      ])
+      await Promise.all([
+        controllerA.subscribe({ topic: 'mqttape/parallel/a', qos: 1 }),
+        controllerB.subscribe({ topic: 'mqttape/parallel/b', qos: 1 })
+      ])
+
+      const publisher = mqtt.connect(`ws://127.0.0.1:${port}/mqtt`, {
+        protocolVersion: 4,
+        reconnectPeriod: 0
+      })
+      await new Promise<void>((resolve, reject) => {
+        publisher.once('connect', () => resolve())
+        publisher.once('error', reject)
+      })
+      await Promise.all([
+        new Promise<void>((resolve, reject) => publisher.publish(
+          'mqttape/parallel/a',
+          'only-a',
+          { qos: 1 },
+          (error) => error ? reject(error) : resolve()
+        )),
+        new Promise<void>((resolve, reject) => publisher.publish(
+          'mqttape/parallel/b',
+          'only-b',
+          { qos: 1 },
+          (error) => error ? reject(error) : resolve()
+        ))
+      ])
+      await waitFor(() => messagesA.length === 1 && messagesB.length === 1)
+
+      expect(messagesA).toEqual([
+        expect.objectContaining({ topic: 'mqttape/parallel/a', payloadText: 'only-a' })
+      ])
+      expect(messagesB).toEqual([
+        expect.objectContaining({ topic: 'mqttape/parallel/b', payloadText: 'only-b' })
+      ])
+
+      await new Promise<void>((resolve, reject) => publisher.end(false, {}, (error) => {
+        if (error) reject(error)
+        else resolve()
+      }))
+    } finally {
+      await Promise.all([controllerA.disconnect(), controllerB.disconnect()])
+      removeMessageA()
+      removeMessageB()
+      controllerA.destroy()
+      controllerB.destroy()
+    }
+  })
+
   it('publishes Last Will only after an ungraceful Web Lite disconnect', async () => {
     const observer = mqtt.connect(`ws://127.0.0.1:${port}/mqtt`, {
       protocolVersion: 4,
@@ -193,7 +274,7 @@ describe('MqttController Web Lite integration', () => {
 
     const ungraceful = new MqttController()
     await ungraceful.connect({ ...baseConfig, clientId: 'mqttape_will_ungraceful' })
-    ungraceful.destroy()
+    ungraceful.destroy(true)
     await waitFor(() => received.includes('{"online":false}'))
 
     await new Promise<void>((resolve, reject) => observer.end(false, {}, (error) => {

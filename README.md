@@ -9,6 +9,7 @@ MQTTape 是一套可在桌面與瀏覽器使用的開源 MQTT 除錯工具。它
 - 支援 MQTT 3.1.1 與 MQTT 5.0
 - 桌面版支援 MQTT over TCP、TLS、WebSocket 與 Secure WebSocket
 - Web Lite 支援 `ws://` 與 `wss://` Broker
+- 最多同時開啟 8 個相互隔離的 Broker 工作階段，並以分頁顯示連線狀態與背景未讀訊息
 - 支援 QoS 0、1、2 的發布與訂閱
 - 即時檢視 QoS 0、1、2 的控制封包流程、方向、Packet ID、DUP、Reason Code 與等待狀態
 - 建立、檢視及重播 MQTT 5 Publish Properties，包含 Content Type、Payload Format、Message Expiry、Response Topic、Correlation Data 與可重複的 User Properties
@@ -57,12 +58,19 @@ MQTTape 是一套可在桌面與瀏覽器使用的開源 MQTT 除錯工具。它
 | 自訂 CA 與 mTLS | 支援 | 不支援 |
 | 應用程式自動更新 | 支援的安裝套件 | 由瀏覽器處理 |
 | CBOR／Protobuf／Sparkplug B Viewer | 支援 | 支援 |
+| 多 Broker 同時連線 | 最多 8 個 | 最多 8 個 |
 
 瀏覽器無法開啟任意 TCP Socket，因此 Web Lite 的通訊協定選單只提供 WebSocket Transport。
 
 MQTT over TCP 通常使用登記連接埠 `1883`，MQTT over TLS 通常使用 `8883`。`8083` 與 `8084` 則是部分 Broker 分別提供 `ws://` 與 `wss://` MQTT Endpoint 時採用的常見預設，並非 MQTT 強制規定；Mosquitto 等部署也常使用其他連接埠。MQTTape 切換通訊協定時填入的 Port 只是起始建議值，請一律以 Broker 管理者提供的 Host、Port 與 WebSocket Path 為準。
 
 Web Lite 發布於 <https://nickyclin.github.io/MQTTape/>。由於 GitHub Pages 使用 HTTPS，遠端 Broker 通常必須提供具有受信任憑證的 `wss://` Endpoint；瀏覽器會阻擋 HTTPS 頁面連線至不安全的 `ws://`。
+
+## 多 Broker 工作階段
+
+使用標題列下方的「新增 Broker」可以同時開啟最多 8 個工作階段。每個分頁都有自己的 MQTT Client、連線狀態、訂閱、訊息時間軸、QoS 封包流程、Topic 樹、Downlink 狀態與重播進度；切換分頁時，背景工作階段仍會維持連線並繼續收訊息，分頁上的數字會標示新增的未讀訊息。
+
+設定檔是全域共用的，因此可在任一分頁儲存後從其他分頁載入；載入同一個設定檔不代表共用 MQTT 連線，各分頁仍需使用不衝突的 Client ID。LoRaWAN Downlink 歷史會依設定檔或 Broker Endpoint 分開保存，避免不同環境的事件互相關聯。關閉工作階段時，MQTTape 會正常送出 MQTT `DISCONNECT` 並清除該分頁的執行期資料，因此不會把正常關閉誤判為需要發布 Last Will 的異常斷線。
 
 ## LoRaWAN MQTT
 
@@ -90,7 +98,7 @@ ChirpStack:      application/<application-id>/device/+/event/+
 
 - The Things Stack：MQTTape 建立的命令會加入唯一 `correlation_ids`，用來精確關聯 `queued`、`sent`、`ack`、`nack` 與 `failed`。
 - ChirpStack：`txack` 與 `ack` 會以 `queueItemId` 精確關聯；由於原始 MQTT Downlink 命令不含平台產生的 Queue Item ID，首次把命令連到 `txack` 時只能依同一裝置的事件順序推定，畫面會明確標示。
-- 本機歷史只包含解析後的狀態中繼資料，不會保存原始 MQTT Payload 或 Broker 憑證；可以隨時在 Downlinks 頁籤匯出版本化 JSON 或清除。
+- 本機歷史會依設定檔或 Broker Endpoint 隔離，只包含解析後的狀態中繼資料，不會保存原始 MQTT Payload 或 Broker 憑證；可以隨時在 Downlinks 頁籤匯出版本化 JSON 或清除。
 - 狀態追蹤只使用 MQTTape 實際看見的訊息，不會查詢 LoRaWAN 平台的完整佇列，也不會在缺少回報事件時自行判定無線傳送成功。
 
 匯出的 Downlink 歷史格式識別碼為 `mqttape-downlink-history`、版本為 `1`。它適合保存與檢查狀態事件，但不包含可重新發布的完整 Downlink Payload；需要無損重播時仍應使用 MQTTape 擷取檔。
@@ -165,7 +173,7 @@ npm run build
 npm run build:web
 ```
 
-`npm run test:e2e` 會建立桌面版與 Web Lite，接著以 Chromium 驗證 Web Lite 啟動、語系保存、Downlink 歷史匯出／清除，以及 Electron 限制型 Preload Bridge。第一次執行前若本機尚未安裝測試瀏覽器，請先執行 `npx playwright install chromium`。
+`npm run test:e2e` 會建立桌面版與 Web Lite，接著以 Chromium 驗證 Web Lite 啟動、語系保存、多 Broker 工作階段、Downlink 歷史匯出／清除，以及 Electron 限制型 Preload Bridge。第一次執行前若本機尚未安裝測試瀏覽器，請先執行 `npx playwright install chromium`。
 
 建立本機桌面套件：
 
@@ -236,7 +244,6 @@ MQTTape 使用 `protobufjs` 解析 Schema 的反射資訊，但以內建的直�
 
 ## Roadmap
 
-- 同時連線多個 Broker 工作階段
 - 自訂 WebSocket Header 與進階認證
 - 已簽章安裝程式與更多 CPU 架構
 

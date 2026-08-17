@@ -24,6 +24,7 @@ import { DownloadIcon, TrashIcon } from './icons'
 interface LoRaWanDownlinkTrackerProps {
   messages: MqttMessageRecord[]
   query: string
+  storageNamespace?: string
   onExport: (history: LoRaWanDownlinkHistoryFile) => Promise<boolean>
 }
 
@@ -53,17 +54,31 @@ const basisKeys: Record<LoRaWanDownlinkCorrelationBasis, TranslationKey> = {
   none: 'downlinks.correlation.none'
 }
 
+function readScopedHistory(storageNamespace?: string) {
+  const scopedEvents = readLoRaWanDownlinkHistory(window.localStorage, storageNamespace)
+  if (!storageNamespace || scopedEvents.length > 0) return scopedEvents
+
+  const legacyEvents = readLoRaWanDownlinkHistory(window.localStorage)
+  if (legacyEvents.length === 0) return scopedEvents
+  if (!writeLoRaWanDownlinkHistory(window.localStorage, legacyEvents, storageNamespace)) {
+    return legacyEvents
+  }
+  clearLoRaWanDownlinkHistory(window.localStorage)
+  return legacyEvents
+}
+
 export function LoRaWanDownlinkTracker({
   messages,
   query,
+  storageNamespace,
   onExport
 }: LoRaWanDownlinkTrackerProps) {
   const { t, formatNumber, formatDateTime } = useI18n()
   const [historyEvents, setHistoryEvents] = useState(() => (
-    readLoRaWanDownlinkHistory(window.localStorage)
+    readScopedHistory(storageNamespace)
   ))
   const [storageAvailable] = useState(() => (
-    canUseLoRaWanDownlinkHistoryStorage(window.localStorage)
+    canUseLoRaWanDownlinkHistoryStorage(window.localStorage, storageNamespace)
   ))
   const [exporting, setExporting] = useState(false)
   const ignoredEventIds = useRef(new Set<string>())
@@ -84,8 +99,8 @@ export function LoRaWanDownlinkTracker({
 
   useEffect(() => {
     if (historyEvents.length === 0) return
-    writeLoRaWanDownlinkHistory(window.localStorage, historyEvents)
-  }, [historyEvents])
+    writeLoRaWanDownlinkHistory(window.localStorage, historyEvents, storageNamespace)
+  }, [historyEvents, storageNamespace])
 
   const tracks = useMemo(
     () => buildLoRaWanDownlinkTracksFromEvents(historyEvents),
@@ -109,7 +124,7 @@ export function LoRaWanDownlinkTracker({
   const clearHistory = (): void => {
     if (!window.confirm(t('downlinks.clearConfirm'))) return
     ignoredEventIds.current = new Set(observedEvents.map(({ id }) => id))
-    clearLoRaWanDownlinkHistory(window.localStorage)
+    clearLoRaWanDownlinkHistory(window.localStorage, storageNamespace)
     setHistoryEvents([])
   }
 

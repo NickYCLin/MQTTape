@@ -651,7 +651,11 @@ input[type='checkbox'] {
 
 /* ===== App shell ======================================================= */
 
-.app { height: 100vh; display: grid; grid-template-rows: var(--topbar-h) minmax(0, 1fr); }
+.app {
+  height: 100vh;
+  display: grid;
+  grid-template-rows: var(--topbar-h) auto minmax(0, 1fr);
+}
 
 .topbar {
   display: grid;
@@ -723,6 +727,91 @@ input[type='checkbox'] {
 .topbar-actions { justify-self: end; display: flex; align-items: center; gap: 8px; }
 .update-control.downloaded { color: var(--accent-on); border-color: var(--accent); background: var(--accent); }
 .update-control.error { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 34%, transparent); }
+
+.session-tabs {
+  min-width: 0;
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.session-tabs-scroll {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.session-tab {
+  min-width: 138px;
+  max-width: 250px;
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+.session-tab:has(> button.active) {
+  border-color: color-mix(in srgb, var(--accent) 58%, var(--border));
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+.session-tab > [role='tab'] {
+  min-width: 0;
+  height: 34px;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 9px;
+  color: var(--text-2);
+  text-align: left;
+}
+
+.session-tab > [role='tab'].active { color: var(--text-1); }
+.session-tab > [role='tab'] > span:nth-child(2) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.session-tab > [role='tab'] small {
+  min-width: 18px;
+  padding: 1px 5px;
+  color: var(--accent-on);
+  font-size: 10px;
+  font-weight: 700;
+  text-align: center;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+}
+.session-tab .status-dot { width: 7px; height: 7px; }
+
+.session-tab-close {
+  width: 28px;
+  height: 28px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  margin-right: 3px;
+  color: var(--text-3);
+  border-radius: var(--radius-sm);
+}
+.session-tab-close:hover { color: var(--danger); background: var(--danger-soft); }
+
+.session-add { flex: none; height: 36px; }
+.session-add > span:first-child { font-size: 18px; line-height: 1; }
+
+.session-host,
+.session-workspace,
+.session-workspace > .workspace { min-height: 0; height: 100%; }
+.session-host { overflow: hidden; }
+.session-workspace[hidden] { display: none; }
 
 .workspace {
   min-height: 0;
@@ -2096,6 +2185,10 @@ input[type='checkbox'] {
 @media (max-width: 900px) {
   body { overflow: auto; }
   .app { height: auto; min-height: 100vh; }
+  .session-host,
+  .session-workspace,
+  .session-workspace > .workspace { height: auto; }
+  .session-host { overflow: visible; }
   .workspace { display: block; }
   .sidebar { border-right: 0; border-bottom: 1px solid var(--border); }
   .stage { min-height: 820px; }
@@ -2117,6 +2210,9 @@ input[type='checkbox'] {
   .topbar { padding: 0 12px; }
   .update-control span { display: none; }
   .brand-text small { display: none; }
+  .session-tabs { padding-inline: 8px; }
+  .session-tab { min-width: 118px; }
+  .session-add > span:last-child { display: none; }
   .stage-toolbar { flex-wrap: wrap; }
   .search { max-width: none; order: 3; flex-basis: 100%; }
   .toolbar-actions { margin-left: 0; }

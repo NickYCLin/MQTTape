@@ -33,6 +33,7 @@ test('desktop shell starts with the restricted preload bridge', async () => {
     const bridgeMethods = await window.evaluate(() => Object.keys(window.mqttape ?? {}).sort())
     expect(bridgeMethods).toEqual(expect.arrayContaining([
       'connect',
+      'destroySession',
       'getUpdateStatus',
       'onMessage',
       'onPacket',
