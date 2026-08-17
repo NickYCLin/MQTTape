@@ -4,12 +4,17 @@ import type {
   CaptureFile,
   ConnectionConfig,
   MqttMessageRecord,
+  MqttPublishProperties,
   MqttQos,
   ReplayOptions,
   ReplayProgress,
   StatusEvent,
   TlsFileKind
 } from '../../../shared/contracts'
+import {
+  MQTT5_PUBLISH_PROPERTIES_VERSION_ERROR,
+  toMqttPublishProperties
+} from '../../../shared/mqtt-properties'
 import { publishTopicError } from '../../../shared/mqtt-topic'
 import { createReplayPlan, replayDelay, replayTimingScale } from '../../../shared/replay'
 import { MqttController } from '../lib/mqtt-controller'
@@ -290,14 +295,26 @@ export function useMqttSession() {
   )
 
   const publish = useCallback(
-    async (topic: string, payload: string, qos: MqttQos, retain: boolean) => {
+    async (
+      topic: string,
+      payload: string,
+      qos: MqttQos,
+      retain: boolean,
+      properties?: MqttPublishProperties
+    ) => {
       const normalizedTopic = topic.trim()
       const topicError = publishTopicError(normalizedTopic)
       if (topicError) {
         setError(topicError)
         return false
       }
-      return run(() => controller.publish({ topic: normalizedTopic, payload, qos, retain }))
+      return run(() => controller.publish({
+        topic: normalizedTopic,
+        payload,
+        qos,
+        retain,
+        properties
+      }))
     },
     [controller, run]
   )
@@ -323,6 +340,13 @@ export function useMqttSession() {
         .find(({ error: topicError }) => topicError)
       if (invalidPlanItem) {
         setError(`Invalid replay topic "${invalidPlanItem.item.topic}": ${invalidPlanItem.error}`)
+        return false
+      }
+      const hasMqtt5PublishProperties = replayPlan.some(({ message }) =>
+        toMqttPublishProperties(message.properties) !== undefined
+      )
+      if (hasMqtt5PublishProperties && config.mqttVersion !== 5) {
+        setError(MQTT5_PUBLISH_PROPERTIES_VERSION_ERROR)
         return false
       }
 
@@ -359,7 +383,8 @@ export function useMqttSession() {
             payload: message.payloadText,
             payloadBase64: message.payloadBase64,
             qos: message.qos,
-            retain: message.retain
+            retain: message.retain,
+            properties: toMqttPublishProperties(message.properties)
           })
           previousTimestamp = message.timestamp
           setReplayProgress({
@@ -389,7 +414,7 @@ export function useMqttSession() {
         setBusy(false)
       }
     },
-    [controller, status.state]
+    [config.mqttVersion, controller, status.state]
   )
 
   const pauseReplay = useCallback(() => {

@@ -10,7 +10,8 @@ MQTTape 是一套可在桌面與瀏覽器使用的開源 MQTT 除錯工具。它
 - 桌面版支援 MQTT over TCP、TLS、WebSocket 與 Secure WebSocket
 - Web Lite 支援 `ws://` 與 `wss://` Broker
 - 支援 QoS 0、1、2 的發布與訂閱
-- 檢視 MQTT 5 Publish Properties，包含 Content Type、Payload Format、Message Expiry、Response Topic、Correlation Data、Topic Alias、Subscription Identifier 與可重複的 User Properties
+- 建立、檢視及重播 MQTT 5 Publish Properties，包含 Content Type、Payload Format、Message Expiry、Response Topic、Correlation Data 與可重複的 User Properties
+- 接收時另會顯示 Topic Alias 與 Subscription Identifier；重播時會基於 MQTT 語意安全略過這兩項連線／訂閱中繼資料
 - 支援 Retained Message、Clean Session 與自動重新連線
 - 可搜尋傳入與傳出訊息的時間軸
 - 依工作階段建立 Topic 階層、流量統計及最新 Payload
@@ -162,11 +163,13 @@ npm run package
 
 ## 擷取格式
 
-擷取檔是版本化 JSON 文件，格式識別碼為 `mqttape-capture`，且永遠不包含連線密碼。Payload 以 Base64 儲存，因此二進位資料也能無損重播；接收到的 MQTT 5 Publish Properties 也會一併保存，其中 Correlation Data 以 Base64 表示。
+擷取檔是版本化 JSON 文件，格式識別碼為 `mqttape-capture`，且永遠不包含連線密碼。Payload 以 Base64 儲存，因此二進位資料也能無損重播；接收與傳送的 MQTT 5 Publish Properties 也會一併保存，其中 Correlation Data 以 Base64 表示。
 
 重播預覽預設只選擇傳出訊息；你可以明確加入傳入訊息，並在發布前查看 Retained Message 數量。重播會維持訊息順序與相對延遲，提供 0.25x 到 4x 速度，且可暫停或取消。每段延遲最多兩秒，完整時序則壓縮在 30 秒內，避免舊擷取檔意外等待數小時。
 
 Topic Prefix Remap 可以在重播前把擷取內容從 Production Topic 導向其他環境。MQTTape 只替換完整 Prefix Boundary，會預覽變更結果，並阻擋空白、包含萬用字元、Null Character 或超過長度限制的發布 Topic。
+
+使用 MQTT 5.0 連線時，重播會保留 Payload Format Indicator、Message Expiry、Content Type、Response Topic、Correlation Data 與同名重複的 User Properties。Topic Alias 只適用於原始連線，Subscription Identifier 則是 Broker 傳給訂閱端的資訊，因此兩者會在重播時略過。Response Topic 會保留原值，不會套用 Topic Prefix Remap，重播到其他環境前應在預覽中確認。若目前是 MQTT 3.1.1 連線，MQTTape 會在開始前阻擋含有 MQTT 5 發布屬性的重播，避免產生不相容封包。
 
 ## Topic 檢視器
 
@@ -194,7 +197,7 @@ Retained 面板是刻意設計成「依工作階段產生的快照」，不是 B
 ## Roadmap
 
 - CBOR、Protobuf 與 Sparkplug B Payload Viewer
-- MQTT 5 Properties 發布／重播與 QoS Packet Flow 檢視
+- QoS Packet Flow 檢視
 - 同時連線多個 Broker 工作階段
 - Last Will、自訂 WebSocket Header 與進階認證
 - 已簽章安裝程式與更多 CPU 架構

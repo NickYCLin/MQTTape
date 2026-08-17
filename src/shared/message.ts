@@ -16,6 +16,15 @@ export function decodePayloadBytes(base64: string): Uint8Array {
   return Uint8Array.from(binary, (character) => character.charCodeAt(0))
 }
 
+export function encodePayloadBytes(bytes: Uint8Array): string {
+  let binary = ''
+  const chunkSize = 0x8000
+  for (let index = 0; index < bytes.length; index += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(index, index + chunkSize))
+  }
+  return btoa(binary)
+}
+
 function containsBinaryControlCharacters(value: string): boolean {
   for (const character of value) {
     const code = character.codePointAt(0) ?? 0

@@ -3,7 +3,7 @@ import { Buffer } from 'node:buffer'
 import { createServer } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { expect, test } from '@playwright/test'
-import { generate, parser } from 'mqtt-packet'
+import { generate, parser, type IPublishPacket } from 'mqtt-packet'
 import { createWebSocketStream, WebSocketServer } from 'ws'
 import {
   DOWNLINK_HISTORY_STORAGE_KEY,
@@ -86,6 +86,7 @@ test('Web Lite inspects MQTT 5 publish properties in both languages', async ({ p
   const packetOptions = { protocolVersion: 5 }
   const server = createServer()
   const websocketServer = new WebSocketServer({ server, path: '/mqtt' })
+  const publishedPackets: IPublishPacket[] = []
   websocketServer.on('connection', (socket) => {
     const stream = createWebSocketStream(socket)
     const packetParser = parser(packetOptions)
@@ -124,7 +125,9 @@ test('Web Lite inspects MQTT 5 publish properties in both languages', async ({ p
             userProperties: { source: ['gateway', 'e2e'] }
           }
         }, packetOptions))
+        return
       }
+      if (packet.cmd === 'publish') publishedPackets.push(packet)
     })
   })
   await new Promise<void>((resolve, reject) => {
@@ -141,9 +144,97 @@ test('Web Lite inspects MQTT 5 publish properties in both languages', async ({ p
     await page.getByRole('button', { name: 'Connect' }).click()
     await expect(page.getByRole('button', { name: 'Disconnect' })).toBeVisible()
 
+    await page.getByText('MQTT 5 publish properties', { exact: true }).click()
+    await page.getByLabel('Publish topic').fill('demo/mqtt5-outgoing')
+    await page.getByLabel('Publish payload').fill('{"command":"start"}')
+    await page.getByLabel('Payload format').selectOption('utf8')
+    await page.getByLabel('Message expiry').fill('90')
+    await page.getByLabel('Content type').fill('application/json')
+    await page.getByLabel('Response topic').fill('demo/replies')
+    await page.getByLabel('Correlation data format').selectOption('hex')
+    await page.getByLabel('Correlation data', { exact: true }).fill('DE AD BE EF')
+    await page.getByRole('button', { name: 'Add property' }).click()
+    await page.getByRole('button', { name: 'Add property' }).click()
+    await page.getByLabel('Name 1').fill('source')
+    await page.getByLabel('Value 1').fill('mqttape')
+    await page.getByLabel('Name 2').fill('source')
+    await page.getByLabel('Value 2').fill('e2e')
+    await page.getByRole('button', { name: 'Publish', exact: true }).click()
+
+    await expect.poll(() => publishedPackets.length).toBe(1)
+    expect(publishedPackets[0].topic).toBe('demo/mqtt5-outgoing')
+    expect(publishedPackets[0].properties).toEqual({
+      payloadFormatIndicator: true,
+      messageExpiryInterval: 90,
+      responseTopic: 'demo/replies',
+      correlationData: Buffer.from([0xde, 0xad, 0xbe, 0xef]),
+      contentType: 'application/json',
+      userProperties: { source: ['mqttape', 'e2e'] }
+    })
+    const outgoingMessage = page.getByRole('button', { name: /demo\/mqtt5-outgoing.*MQTT 5/ })
+    await expect(outgoingMessage).toBeVisible()
+    await page.getByText('MQTT 5 publish properties', { exact: true }).click()
+
+    await page.getByLabel('MQTTape capture file').setInputFiles({
+      name: 'mqtt5-replay.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify({
+        format: 'mqttape-capture',
+        version: 1,
+        exportedAt: '2026-08-17T07:00:00.000Z',
+        connection: { host: 'capture-broker' },
+        messages: [{
+          id: 'mqtt5-replay',
+          direction: 'outgoing',
+          timestamp: '2026-08-17T07:00:00.000Z',
+          topic: 'demo/mqtt5-replay',
+          qos: 0,
+          retain: false,
+          duplicate: false,
+          payloadBase64: 'cmVwbGF5',
+          payloadText: 'replay',
+          size: 6,
+          properties: {
+            payloadFormatIndicator: true,
+            contentType: 'text/plain',
+            correlationDataBase64: 'AQIDBA==',
+            topicAlias: 7,
+            subscriptionIdentifiers: [12],
+            userProperties: [
+              { name: 'source', value: 'capture' },
+              { name: 'source', value: 'replay' }
+            ]
+          }
+        }]
+      }))
+    })
+    await expect(page.getByText(
+      '1 selected message(s) include publish-safe MQTT 5 properties.'
+    )).toBeVisible()
+    await expect(page.getByText(/Topic Alias and Subscription Identifier are omitted/))
+      .toBeVisible()
+    await page.getByRole('button', { name: 'Start replay' }).click()
+    await expect.poll(() => publishedPackets.length).toBe(2)
+    expect(publishedPackets[1]).toMatchObject({
+      topic: 'demo/mqtt5-replay',
+      payload: Buffer.from('replay'),
+      properties: {
+        payloadFormatIndicator: true,
+        contentType: 'text/plain',
+        correlationData: Buffer.from([1, 2, 3, 4]),
+        userProperties: { source: ['capture', 'replay'] }
+      }
+    })
+    expect(publishedPackets[1].properties).not.toHaveProperty('topicAlias')
+    expect(publishedPackets[1].properties).not.toHaveProperty('subscriptionIdentifier')
+    await expect(page.getByText('completed', { exact: true })).toBeVisible()
+    await page.getByRole('button', { name: 'Close' }).last().click()
+
     await page.getByLabel('Subscription topic').fill('demo/mqtt5')
-    await page.getByRole('button', { name: 'Add' }).click()
-    const message = page.getByRole('button', { name: /demo\/mqtt5.*MQTT 5/ })
+    await page.getByRole('button', { name: 'Add', exact: true }).click()
+    const message = page.locator('button.msg-summary').filter({
+      has: page.getByText('demo/mqtt5', { exact: true })
+    })
     await expect(message).toBeVisible()
     await message.click()
 

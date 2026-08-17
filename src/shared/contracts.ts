@@ -38,6 +38,7 @@ export interface PublishRequest {
   payloadBase64?: string
   qos: MqttQos
   retain: boolean
+  properties?: MqttPublishProperties
 }
 
 export interface SubscribeRequest {
@@ -50,15 +51,18 @@ export interface MqttUserProperty {
   value: string
 }
 
-export interface MqttMessageProperties {
+export interface MqttPublishProperties {
   payloadFormatIndicator?: boolean
   messageExpiryInterval?: number
-  topicAlias?: number
   responseTopic?: string
   correlationDataBase64?: string
   userProperties?: MqttUserProperty[]
-  subscriptionIdentifiers?: number[]
   contentType?: string
+}
+
+export interface MqttMessageProperties extends MqttPublishProperties {
+  topicAlias?: number
+  subscriptionIdentifiers?: number[]
 }
 
 export interface MqttMessageRecord {

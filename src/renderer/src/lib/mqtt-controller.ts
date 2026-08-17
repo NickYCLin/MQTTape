@@ -1,4 +1,4 @@
-import type { MqttClient } from 'mqtt'
+import type { IClientPublishOptions, MqttClient } from 'mqtt'
 import { Buffer } from 'buffer'
 import type {
   ConnectionConfig,
@@ -7,7 +7,12 @@ import type {
   StatusEvent,
   SubscribeRequest
 } from '../../../shared/contracts'
-import { normalizeMqttPublishProperties } from '../../../shared/mqtt-properties'
+import {
+  mqttPublishPropertiesProtocolError,
+  normalizeMqttPublishProperties,
+  toMqttPublishPacketProperties,
+  toMqttPublishProperties
+} from '../../../shared/mqtt-properties'
 import { publishTopicError } from '../../../shared/mqtt-topic'
 
 type StatusListener = (event: StatusEvent) => void
@@ -172,6 +177,18 @@ export class MqttController {
     const topic = request.topic.trim()
     const topicError = publishTopicError(topic)
     if (topicError) throw new Error(topicError)
+    const mqttVersion = client.options.protocolVersion === 5 ? 5 : 4
+    const propertiesError = mqttPublishPropertiesProtocolError(mqttVersion, request.properties)
+    if (propertiesError) throw new Error(propertiesError)
+    const properties = toMqttPublishPacketProperties(
+      request.properties,
+      (base64) => Buffer.from(base64, 'base64')
+    )
+    const options: IClientPublishOptions = {
+      qos: request.qos,
+      retain: request.retain,
+      ...(properties ? { properties } : {})
+    }
     const payload = request.payloadBase64
       ? Buffer.from(base64ToBytes(request.payloadBase64))
       : Buffer.from(request.payload, 'utf8')
@@ -180,7 +197,7 @@ export class MqttController {
       client.publish(
         topic,
         payload,
-        { qos: request.qos, retain: request.retain },
+        options,
         (error) => {
           if (error) {
             reject(error)
@@ -198,7 +215,8 @@ export class MqttController {
             payloadText: request.payloadBase64
               ? new TextDecoder().decode(payload)
               : request.payload,
-            size: payload.byteLength
+            size: payload.byteLength,
+            properties: toMqttPublishProperties(request.properties)
           })
           resolve()
         }

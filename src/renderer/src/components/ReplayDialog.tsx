@@ -1,12 +1,14 @@
 import { useMemo, useState } from 'react'
 import type {
   CaptureFile,
+  MqttVersion,
   ReplayOptions,
   ReplayPreset,
   ReplayProgress
 } from '../../../shared/contracts'
 import { formatBytes } from '../../../shared/message'
 import { publishTopicError } from '../../../shared/mqtt-topic'
+import { toMqttPublishProperties } from '../../../shared/mqtt-properties'
 import { createReplayPlan } from '../../../shared/replay'
 import {
   deleteReplayPreset,
@@ -29,6 +31,7 @@ const replayStateKeys: Record<ReplayProgress['state'], TranslationKey> = {
 
 interface ReplayDialogProps {
   capture: CaptureFile
+  mqttVersion: MqttVersion
   progress: ReplayProgress
   onStart: (options: ReplayOptions) => void
   onPause: () => void
@@ -39,6 +42,7 @@ interface ReplayDialogProps {
 
 export function ReplayDialog({
   capture,
+  mqttVersion,
   progress,
   onStart,
   onPause,
@@ -76,6 +80,14 @@ export function ReplayDialog({
     [capture.messages, replayOptions]
   )
   const selectedMessages = replayPlan.map(({ message }) => message)
+  const mqtt5PropertyMessages = replayPlan.filter(({ message }) =>
+    toMqttPublishProperties(message.properties) !== undefined
+  )
+  const receiveOnlyPropertyMessages = replayPlan.filter(({ message }) =>
+    message.properties?.topicAlias !== undefined ||
+    Boolean(message.properties?.subscriptionIdentifiers?.length)
+  )
+  const mqtt5PropertiesBlocked = mqttVersion !== 5 && mqtt5PropertyMessages.length > 0
   const remappedMessages = replayPlan.filter(({ remapped }) => remapped)
   const invalidTopic = replayPlan
     .map(({ topic }) => ({ topic, error: publishTopicError(topic) }))
@@ -321,6 +333,27 @@ export function ReplayDialog({
             )}
           </section>
 
+          {(mqtt5PropertyMessages.length > 0 || receiveOnlyPropertyMessages.length > 0) && (
+            <div className={`notice ${mqtt5PropertiesBlocked ? 'error' : 'info'}`}>
+              <strong>
+                {t(mqtt5PropertiesBlocked
+                  ? 'replay.mqtt5PropertiesBlocked'
+                  : mqtt5PropertyMessages.length > 0
+                    ? 'replay.mqtt5PropertiesPreserved'
+                    : 'replay.mqtt5ReceiveOnlyOmitted', {
+                  count: formatNumber(
+                    mqtt5PropertyMessages.length || receiveOnlyPropertyMessages.length
+                  )
+                })}
+              </strong>
+              <span>
+                {t(mqtt5PropertiesBlocked
+                  ? 'replay.mqtt5PropertiesMqtt5Required'
+                  : 'replay.mqtt5PropertiesHelp')}
+              </span>
+            </div>
+          )}
+
           <div className={`notice ${invalidTopic ? 'error' : 'warn'}`}>
             <strong>
               {invalidTopic
@@ -352,7 +385,9 @@ export function ReplayDialog({
             <button
               className="btn primary"
               type="button"
-              disabled={selectedMessages.length === 0 || Boolean(invalidTopic)}
+              disabled={
+                selectedMessages.length === 0 || Boolean(invalidTopic) || mqtt5PropertiesBlocked
+              }
               onClick={start}
             >
               {t('replay.start')}
