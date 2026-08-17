@@ -82,6 +82,23 @@ test('Web Lite starts and persists the selected interface language', async ({ pa
   await expect(page.getByRole('note')).toContainText('此連接埠只是起始建議值')
 })
 
+test('Web Lite configures and validates MQTT Last Will', async ({ page }) => {
+  await page.goto('/')
+  await page.getByLabel('Protocol').selectOption('ws')
+  await page.getByLabel('Host').fill('127.0.0.1')
+  await page.getByLabel('Port').fill('1')
+  await page.getByText('Advanced settings').click()
+  await page.getByLabel('Enable Last Will').check()
+
+  await expect(page.getByLabel('Last Will topic')).toBeVisible()
+  await expect(page.locator('.will-fields').getByLabel('Payload format')).toHaveValue('text')
+  await expect(page.getByText('A normal MQTTape disconnect sends DISCONNECT')).toBeVisible()
+
+  await page.getByLabel('Interface language').selectOption('zh-TW')
+  await page.getByRole('button', { name: '連線' }).click()
+  await expect(page.getByRole('alert')).toContainText('必須輸入 Last Will Topic')
+})
+
 test('Web Lite inspects MQTT 5 publish properties in both languages', async ({ page }) => {
   const packetOptions = { protocolVersion: 5 }
   const server = createServer()

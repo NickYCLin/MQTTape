@@ -164,6 +164,18 @@ const english = {
   'connection.mqttVersion': 'MQTT version',
   'connection.keepAlive': 'Keep alive (sec)',
   'connection.cleanSession': 'Clean session',
+  'connection.willEnabled': 'Enable Last Will',
+  'connection.willHelp': 'The Broker publishes this message only if the client disconnects unexpectedly. A normal MQTTape disconnect sends DISCONNECT and does not publish the Will.',
+  'connection.willTopic': 'Last Will topic',
+  'connection.willPayloadFormat': 'Payload format',
+  'connection.willQos': 'Will QoS',
+  'connection.willRetain': 'Retain Will',
+  'connection.willPayload': 'Last Will payload',
+  'connection.willDelay': 'Will Delay (sec)',
+  'connection.willExpiry': 'Message Expiry (sec)',
+  'connection.willContentType': 'Content type',
+  'connection.willStorageDesktop': 'When this profile is saved, the Will payload is encrypted with the same OS secure storage used for passwords.',
+  'connection.willStorageWeb': 'Web Lite does not save the Will payload in a broker profile. Enter it again after loading a saved profile.',
   'connection.verifyTls': 'Verify TLS certificate',
   'connection.mtls': 'mTLS certificates',
   'connection.customCa': 'Custom CA',
@@ -488,7 +500,17 @@ const english = {
   'errors.presetUniqueIdentifier': 'Unable to create a unique replay preset identifier.',
   'errors.presetLimit': 'Replay presets are limited to {count}.',
   'errors.presetNameLength': 'Preset name must be {count} characters or fewer.',
-  'errors.presetDuplicate': 'A replay preset named “{name}” already exists.'
+  'errors.presetDuplicate': 'A replay preset named “{name}” already exists.',
+  'errors.willTopicRequired': 'Last Will topic is required.',
+  'errors.willTopicNull': 'Last Will topics cannot contain null characters.',
+  'errors.willTopicWildcard': 'Last Will topics cannot contain MQTT wildcards (# or +).',
+  'errors.willTopicLength': 'Last Will topic exceeds the MQTT 65,535-byte limit.',
+  'errors.willQos': 'Last Will QoS must be 0, 1, or 2.',
+  'errors.willHex': 'Last Will Hex payload must contain complete byte pairs.',
+  'errors.willBase64': 'Last Will payload is not valid Base64.',
+  'errors.willSize': 'Last Will payload exceeds the 1 MB limit.',
+  'errors.willDelay': 'Last Will Delay must be a whole number from 0 to 4,294,967,295.',
+  'errors.willExpiry': 'Last Will Message Expiry must be a whole number from 0 to 4,294,967,295.'
 } as const
 
 export type TranslationKey = keyof typeof english
@@ -652,6 +674,18 @@ const traditionalChinese: Record<TranslationKey, string> = {
   'connection.mqttVersion': 'MQTT 版本',
   'connection.keepAlive': 'Keep Alive（秒）',
   'connection.cleanSession': '全新工作階段',
+  'connection.willEnabled': '啟用 Last Will',
+  'connection.willHelp': '只有用戶端非預期斷線時，Broker 才會發布此訊息；正常按 MQTTape「中斷連線」會送出 DISCONNECT，不會發布 Will。',
+  'connection.willTopic': 'Last Will Topic',
+  'connection.willPayloadFormat': 'Payload 格式',
+  'connection.willQos': 'Will QoS',
+  'connection.willRetain': '保留 Will',
+  'connection.willPayload': 'Last Will Payload',
+  'connection.willDelay': 'Will Delay（秒）',
+  'connection.willExpiry': 'Message Expiry（秒）',
+  'connection.willContentType': 'Content Type',
+  'connection.willStorageDesktop': '儲存此設定檔時，Will Payload 會使用與密碼相同的作業系統安全儲存空間加密。',
+  'connection.willStorageWeb': 'Web Lite 不會把 Will Payload 存入 Broker 設定檔；載入設定檔後請重新輸入。',
   'connection.verifyTls': '驗證 TLS 憑證',
   'connection.mtls': 'mTLS 憑證',
   'connection.customCa': '自訂 CA',
@@ -976,7 +1010,17 @@ const traditionalChinese: Record<TranslationKey, string> = {
   'errors.presetUniqueIdentifier': '無法建立不重複的重播預設識別碼。',
   'errors.presetLimit': '重播預設最多只能有 {count} 個。',
   'errors.presetNameLength': '預設名稱不可超過 {count} 個字元。',
-  'errors.presetDuplicate': '已存在名為「{name}」的重播預設。'
+  'errors.presetDuplicate': '已存在名為「{name}」的重播預設。',
+  'errors.willTopicRequired': '必須輸入 Last Will Topic。',
+  'errors.willTopicNull': 'Last Will Topic 不可包含空字元。',
+  'errors.willTopicWildcard': 'Last Will Topic 不可包含 MQTT 萬用字元（# 或 +）。',
+  'errors.willTopicLength': 'Last Will Topic 超過 MQTT 的 65,535 位元組限制。',
+  'errors.willQos': 'Last Will QoS 必須是 0、1 或 2。',
+  'errors.willHex': 'Last Will Hex Payload 必須包含完整位元組，例如 DE AD。',
+  'errors.willBase64': 'Last Will Payload 不是有效的 Base64。',
+  'errors.willSize': 'Last Will Payload 超過 1 MB 限制。',
+  'errors.willDelay': 'Last Will Delay 必須是 0 到 4,294,967,295 的整數。',
+  'errors.willExpiry': 'Last Will Message Expiry 必須是 0 到 4,294,967,295 的整數。'
 }
 
 const translations: Record<Language, Record<TranslationKey, string>> = {
@@ -1009,7 +1053,17 @@ const knownMessageKeys: Record<string, TranslationKey> = {
   'Preset name is required.': 'errors.presetNameRequired',
   'Choose at least one direction and a supported replay speed.': 'errors.presetOptions',
   'Unable to create a valid replay preset identifier.': 'errors.presetIdentifier',
-  'Unable to create a unique replay preset identifier.': 'errors.presetUniqueIdentifier'
+  'Unable to create a unique replay preset identifier.': 'errors.presetUniqueIdentifier',
+  'Last Will topic is required.': 'errors.willTopicRequired',
+  'Last Will topics cannot contain null characters.': 'errors.willTopicNull',
+  'Last Will topics cannot contain MQTT wildcards (# or +).': 'errors.willTopicWildcard',
+  'Last Will topic exceeds the MQTT 65,535-byte limit.': 'errors.willTopicLength',
+  'Last Will QoS must be 0, 1, or 2.': 'errors.willQos',
+  'Last Will Hex payload must contain complete byte pairs.': 'errors.willHex',
+  'Last Will payload is not valid Base64.': 'errors.willBase64',
+  'Last Will payload exceeds the 1 MB limit.': 'errors.willSize',
+  'Last Will Delay must be a whole number from 0 to 4,294,967,295.': 'errors.willDelay',
+  'Last Will Message Expiry must be a whole number from 0 to 4,294,967,295.': 'errors.willExpiry'
 }
 
 export function isLanguage(value: unknown): value is Language {

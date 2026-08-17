@@ -3,8 +3,10 @@ import type { AddressInfo } from 'node:net'
 import { Aedes } from 'aedes'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { createWebSocketStream, WebSocketServer } from 'ws'
+import mqtt from 'mqtt'
 import type { ConnectionConfig, MqttMessageRecord, MqttPacketEvent, StatusEvent } from '../../../shared/contracts'
 import { MqttController } from './mqtt-controller'
+import { defaultMqttLastWill } from '../../../shared/mqtt-will'
 
 async function waitFor(predicate: () => boolean, timeoutMilliseconds = 4_000): Promise<void> {
   const deadline = Date.now() + timeoutMilliseconds
@@ -137,5 +139,66 @@ describe('MqttController Web Lite integration', () => {
     removeMessage()
     removePacket()
     controller.destroy()
+  })
+
+  it('publishes Last Will only after an ungraceful Web Lite disconnect', async () => {
+    const observer = mqtt.connect(`ws://127.0.0.1:${port}/mqtt`, {
+      protocolVersion: 4,
+      reconnectPeriod: 0
+    })
+    const received: string[] = []
+    observer.on('message', (_topic, payload) => received.push(payload.toString()))
+    await new Promise<void>((resolve, reject) => {
+      observer.once('connect', () => resolve())
+      observer.once('error', reject)
+    })
+    await new Promise<void>((resolve, reject) => {
+      observer.subscribe('mqttape/will/#', (error) => error ? reject(error) : resolve())
+    })
+
+    const baseConfig: ConnectionConfig = {
+      name: 'Will test',
+      protocol: 'ws',
+      host: '127.0.0.1',
+      port,
+      path: 'mqtt',
+      clientId: 'mqttape_will_test',
+      username: '',
+      password: '',
+      mqttVersion: 4,
+      clean: true,
+      keepalive: 30,
+      reconnectPeriod: 0,
+      rejectUnauthorized: true,
+      caPath: '',
+      clientCertificatePath: '',
+      clientKeyPath: '',
+      clientKeyPassphrase: '',
+      will: {
+        ...defaultMqttLastWill(),
+        enabled: true,
+        topic: 'mqttape/will/client',
+        payload: '{"online":false}',
+        qos: 1,
+        retain: false
+      }
+    }
+
+    const graceful = new MqttController()
+    await graceful.connect({ ...baseConfig, clientId: 'mqttape_will_graceful' })
+    await graceful.disconnect()
+    await new Promise((resolve) => setTimeout(resolve, 100))
+    expect(received).toEqual([])
+    graceful.destroy()
+
+    const ungraceful = new MqttController()
+    await ungraceful.connect({ ...baseConfig, clientId: 'mqttape_will_ungraceful' })
+    ungraceful.destroy()
+    await waitFor(() => received.includes('{"online":false}'))
+
+    await new Promise<void>((resolve, reject) => observer.end(false, {}, (error) => {
+      if (error) reject(error)
+      else resolve()
+    }))
   })
 })

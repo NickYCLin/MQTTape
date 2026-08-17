@@ -4,6 +4,7 @@ import { dirname } from 'node:path'
 import type {
   BrokerProfile,
   ConnectionConfig,
+  MqttLastWillConfig,
   SaveBrokerProfileRequest
 } from '../shared/contracts'
 
@@ -13,9 +14,15 @@ interface SecretProtector {
   decrypt(value: Buffer): string
 }
 
+type StoredLastWill = Omit<MqttLastWillConfig, 'payload'>
+type StoredConnectionConfig = Omit<
+  ConnectionConfig,
+  'password' | 'clientKeyPassphrase' | 'will'
+> & { will?: StoredLastWill }
+
 interface StoredProfile {
   id: string
-  config: Omit<ConnectionConfig, 'password' | 'clientKeyPassphrase'>
+  config: StoredConnectionConfig
   encryptedSecrets?: string
 }
 
@@ -27,15 +34,21 @@ interface StoredProfileFile {
 interface ProfileSecrets {
   password: string
   clientKeyPassphrase: string
+  willPayload: string
 }
 
 function withoutSecrets(
   config: ConnectionConfig
-): Omit<ConnectionConfig, 'password' | 'clientKeyPassphrase'> {
+): StoredConnectionConfig {
   const safeConfig: Partial<ConnectionConfig> = { ...config }
   delete safeConfig.password
   delete safeConfig.clientKeyPassphrase
-  return safeConfig as Omit<ConnectionConfig, 'password' | 'clientKeyPassphrase'>
+  if (safeConfig.will) {
+    const safeWill: Partial<MqttLastWillConfig> = { ...safeConfig.will }
+    delete safeWill.payload
+    safeConfig.will = safeWill as MqttLastWillConfig
+  }
+  return safeConfig as StoredConnectionConfig
 }
 
 function normalizeStoredProfile(value: unknown): StoredProfile | null {
@@ -78,9 +91,12 @@ export class ProfileStore {
     const existingIndex = profiles.findIndex((profile) => profile.id === id)
     const secrets: ProfileSecrets = {
       password: request.config.password,
-      clientKeyPassphrase: request.config.clientKeyPassphrase
+      clientKeyPassphrase: request.config.clientKeyPassphrase,
+      willPayload: request.config.will?.payload ?? ''
     }
-    const hasNewSecrets = Boolean(secrets.password || secrets.clientKeyPassphrase)
+    const hasNewSecrets = Boolean(
+      secrets.password || secrets.clientKeyPassphrase || secrets.willPayload
+    )
     let encryptedSecrets: string | undefined
 
     if (hasNewSecrets && this.protector.isAvailable()) {
@@ -140,12 +156,16 @@ export class ProfileStore {
 
   private toBrokerProfile(profile: StoredProfile): BrokerProfile {
     const secrets = this.decryptSecrets(profile.encryptedSecrets)
+    const { will, ...storedConfig } = profile.config
     return {
       id: profile.id,
       config: {
-        ...profile.config,
+        ...storedConfig,
         password: secrets.password,
-        clientKeyPassphrase: secrets.clientKeyPassphrase
+        clientKeyPassphrase: secrets.clientKeyPassphrase,
+        ...(will
+          ? { will: { ...will, payload: secrets.willPayload } }
+          : {})
       },
       secretsStored: Boolean(profile.encryptedSecrets && this.protector.isAvailable())
     }
@@ -153,7 +173,7 @@ export class ProfileStore {
 
   private decryptSecrets(value: string | undefined): ProfileSecrets {
     if (!value || !this.protector.isAvailable()) {
-      return { password: '', clientKeyPassphrase: '' }
+      return { password: '', clientKeyPassphrase: '', willPayload: '' }
     }
 
     try {
@@ -164,10 +184,11 @@ export class ProfileStore {
         password: typeof secrets.password === 'string' ? secrets.password : '',
         clientKeyPassphrase: typeof secrets.clientKeyPassphrase === 'string'
           ? secrets.clientKeyPassphrase
-          : ''
+          : '',
+        willPayload: typeof secrets.willPayload === 'string' ? secrets.willPayload : ''
       }
     } catch {
-      return { password: '', clientKeyPassphrase: '' }
+      return { password: '', clientKeyPassphrase: '', willPayload: '' }
     }
   }
 }

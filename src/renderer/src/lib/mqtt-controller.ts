@@ -16,6 +16,7 @@ import {
 } from '../../../shared/mqtt-properties'
 import { publishTopicError } from '../../../shared/mqtt-topic'
 import { createMqttPacketEvent } from '../../../shared/packet-flow'
+import { mqttLastWillOptions } from '../../../shared/mqtt-will'
 
 type StatusListener = (event: StatusEvent) => void
 type MessageListener = (message: MqttMessageRecord) => void
@@ -97,6 +98,7 @@ export class MqttController {
     this.emitStatus({ state: 'connecting', detail: brokerUrl(config) })
 
     const { default: mqtt } = await import('mqtt')
+    const will = mqttLastWillOptions(config.will, config.mqttVersion)
     const client = mqtt.connect(brokerUrl(config), {
       clientId: config.clientId || undefined,
       username: config.username || undefined,
@@ -107,7 +109,15 @@ export class MqttController {
       reconnectPeriod: config.reconnectPeriod,
       connectTimeout: 15_000,
       rejectUnauthorized: config.rejectUnauthorized,
-      resubscribe: true
+      resubscribe: true,
+      ...(will
+        ? {
+            will: {
+              ...will,
+              payload: Buffer.from(will.payload)
+            }
+          }
+        : {})
     })
     this.webClient = client
     this.bindWebEvents(client, config)
