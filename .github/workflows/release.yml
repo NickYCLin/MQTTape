@@ -3,6 +3,7 @@ name: Release
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -14,14 +15,29 @@ jobs:
       matrix:
         include:
           - runner: windows-latest
-            target: win
+            target: win-x64
             args: --win --x64
+            updater_metadata: true
+          - runner: windows-11-arm
+            target: win-arm64
+            args: --win --arm64
+            updater_metadata: false
+          - runner: macos-15-intel
+            target: mac-x64
+            args: --mac --x64
+            updater_metadata: false
           - runner: macos-latest
-            target: mac
-            args: --mac --x64 --arm64
+            target: mac-arm64
+            args: --mac --arm64
+            updater_metadata: false
           - runner: ubuntu-latest
-            target: linux
+            target: linux-x64
             args: --linux --x64
+            updater_metadata: true
+          - runner: ubuntu-24.04-arm
+            target: linux-arm64
+            args: --linux --arm64
+            updater_metadata: false
     runs-on: ${{ matrix.runner }}
     steps:
       - name: Checkout
@@ -47,12 +63,22 @@ jobs:
             release/*.zip
             release/*.AppImage
             release/*.deb
+          if-no-files-found: error
+          retention-days: 7
+      - name: Upload x64 update metadata
+        if: matrix.updater_metadata
+        uses: actions/upload-artifact@v7
+        with:
+          name: MQTTape-${{ matrix.target }}-update-metadata
+          path: |
             release/latest*.yml
             release/*.blockmap
           if-no-files-found: error
+          retention-days: 7
 
   publish:
     name: Publish GitHub Release
+    if: startsWith(github.ref, 'refs/tags/v')
     needs: package
     runs-on: ubuntu-latest
     permissions:
@@ -61,6 +87,7 @@ jobs:
       - name: Download packages
         uses: actions/download-artifact@v8
         with:
+          pattern: MQTTape-*
           path: artifacts
           merge-multiple: true
       - name: Generate SHA-256 checksums
@@ -73,9 +100,10 @@ jobs:
             MQTTape releases include the latest inspected source, cross-platform
             desktop packages, and a SHA-256 checksum manifest.
 
-            Installed Windows builds and supported Linux packages can download
-            future updates in the background. The Windows portable build and
-            unsigned macOS builds continue to use manual downloads.
+            Installed Windows x64 builds and supported Linux x64 packages can
+            download future updates in the background. ARM64 packages, the
+            Windows portable build, and unsigned macOS builds continue to use
+            manual downloads.
 
             ## Code signing policy
 

@@ -6,6 +6,9 @@ All notable changes to MQTTape are documented in this file.
 
 ### Added
 
+- Native x64 and ARM64 release packages for Windows, macOS, and Linux using GitHub-hosted architecture-specific runners.
+- A SignPath activation and verification runbook for safely wiring Windows signing after the OSS application is approved.
+- Architecture-neutral CBOR packaging that uses the existing pure-JavaScript decoder without rebuilding or shipping the optional `cbor-extract` native accelerator.
 - Desktop WebSocket handshake authentication with HTTP Basic, Bearer tokens, and validated custom headers, plus URL query parameters in both desktop and Web Lite.
 - OS-encrypted desktop profile storage for WebSocket authentication values, Web Lite secret omission, and capture/status privacy guards.
 - Up to eight simultaneous, tabbed Broker sessions with isolated MQTT clients, subscriptions, captures, packet flows, replay state, and background unread counts.
@@ -23,6 +26,10 @@ All notable changes to MQTTape are documented in this file.
 - Protocol-specific port guidance that distinguishes registered MQTT TCP ports from common Broker WebSocket defaults.
 - MQTT 5 Publish Properties editor and lossless replay for publish-safe metadata in both the desktop app and Web Lite.
 - MQTT 3.1.1 compatibility guards plus replay omission of connection-scoped Topic Alias and Broker-issued Subscription Identifier metadata.
+
+### Changed
+
+- ARM64 packages use explicit manual downloads until per-architecture updater metadata is available, preventing cross-architecture automatic updates.
 
 ## [0.11.0] - 2026-08-17
 

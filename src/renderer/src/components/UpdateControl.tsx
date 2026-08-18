@@ -30,16 +30,21 @@ export function UpdateControl() {
   if (!status || status.mode === 'disabled') return null
 
   if (status.mode === 'manual') {
+    const labelKey = status.reason === 'portable'
+      ? 'update.manualPortable'
+      : status.reason === 'unsupported-architecture'
+        ? 'update.manualArchitecture'
+        : 'update.manual'
     return (
       <a
         className="btn ghost sm update-control"
         href={RELEASES_URL}
         target="_blank"
         rel="noreferrer"
-        title={t(status.reason === 'portable' ? 'update.manualPortable' : 'update.manual')}
+        title={t(labelKey)}
       >
         <DownloadIcon width={15} height={15} />
-        <span>{t(status.reason === 'portable' ? 'update.manualPortable' : 'update.manual')}</span>
+        <span>{t(labelKey)}</span>
       </a>
     )
   }

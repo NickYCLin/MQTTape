@@ -115,7 +115,9 @@ ChirpStack:      application/<application-id>/device/+/event/+
 
 ## 下載
 
-請從 [GitHub Releases](https://github.com/NickYCLin/MQTTape/releases/latest) 下載最新版桌面套件與 Checksum Manifest。Windows 使用者可選擇 `Setup` 安裝程式以使用應用程式自動更新，或選擇需要手動更新的 Portable 執行檔。
+請從 [GitHub Releases](https://github.com/NickYCLin/MQTTape/releases/latest) 下載最新版桌面套件與 Checksum Manifest。Release 會分別提供 Windows、macOS、Linux 的 x64 與 ARM64 套件，檔名中的 `x64`／`arm64` 可用來選擇 CPU 架構。
+
+Windows x64 使用者可選擇 `Setup` 安裝程式以使用應用程式自動更新，或選擇需要手動更新的 Portable 執行檔。ARM64 目前一律連到最新版手動下載頁，避免共用 x64 更新 metadata 時安裝到錯誤架構；後續建立獨立更新 Feed 後才會開啟 ARM64 自動更新。
 
 ## 程式碼簽章政策
 
@@ -125,8 +127,9 @@ ChirpStack:      application/<application-id>/device/+/event/+
 - Approver：[NickYCLin](https://github.com/NickYCLin)
 - 每次 Release 的簽章要求都必須由 Approver 手動核准
 - 隱私權政策：[PRIVACY.md](PRIVACY.md)
+- 核准後接線與驗收手冊：[docs/SIGNPATH.md](docs/SIGNPATH.md)
 
-在 SignPath 申請與簽章流程完成之前發布的 Windows 套件仍未簽章。執行前請先使用 Release 中的 Checksum Manifest 驗證下載檔案。
+SignPath 開源專案申請已送出但仍在等待核准。在申請與簽章流程完成之前發布的 Windows 套件仍未簽章；執行前請先使用 Release 中的 Checksum Manifest 驗證下載檔案。
 
 ## 設定檔與 mTLS
 
@@ -138,9 +141,9 @@ TLS 檔案必須使用 MQTTape 的檔案選擇器指定。Client Certificate 與
 
 ## 自動更新
 
-Windows `Setup` 安裝版與支援的 Linux 套件會在啟動後及每六小時檢查 GitHub Releases。更新會在背景下載；準備完成後，可在標題列選擇「重新啟動以更新」。若正常關閉程式，已下載的更新也會在結束時套用。
+Windows x64 `Setup` 安裝版與支援的 Linux x64 套件會在啟動後及每六小時檢查 GitHub Releases。更新會在背景下載；準備完成後，可在標題列選擇「重新啟動以更新」。若正常關閉程式，已下載的更新也會在結束時套用。
 
-Windows Portable 執行檔無法安全地自行取代，因此只會連到最新版手動下載頁。未簽章的 macOS Build 在設定程式碼簽章前也維持手動更新。若目前安裝的是導入自動更新之前的版本，需要最後一次手動安裝新版 `Setup`；之後即可直接更新，不必先解除安裝。
+Windows Portable、所有 ARM64 套件與未簽章的 macOS Build 目前維持手動更新。ARM64 版標題列會明確顯示「ARM64・下載更新」，不會讀取 x64 的差分更新檔。若目前安裝的是導入自動更新之前的 Windows x64 版本，需要最後一次手動安裝新版 `Setup`；之後即可直接更新，不必先解除安裝。
 
 ## MQTT Last Will
 
@@ -254,7 +257,7 @@ MQTTape 使用 `protobufjs` 解析 Schema 的反射資訊，但以內建的直�
 
 ## Roadmap
 
-- 已簽章安裝程式與更多 CPU 架構
+- Windows 安裝程式程式碼簽章（SignPath 申請已送出，等待核准與專案參數）
 
 ## 參與貢獻
 

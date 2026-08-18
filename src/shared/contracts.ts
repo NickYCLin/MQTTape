@@ -205,6 +205,7 @@ export type UpdateState =
 export type UpdateSupportReason =
   | 'development'
   | 'portable'
+  | 'unsupported-architecture'
   | 'unsigned-macos'
   | 'unsupported-package'
 
