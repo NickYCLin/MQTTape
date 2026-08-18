@@ -67,9 +67,12 @@
     "files": [
       "out/**/*",
       "package.json",
-      "LICENSE"
+      "LICENSE",
+      "!node_modules/cbor-extract{,/**/*}",
+      "!node_modules/@cbor-extract{,/**/*}"
     ],
     "asar": true,
+    "npmRebuild": false,
     "electronUpdaterCompatibility": ">=2.16",
     "publish": {
       "provider": "github",
@@ -79,18 +82,8 @@
     "win": {
       "icon": "build/icon.ico",
       "target": [
-        {
-          "target": "portable",
-          "arch": [
-            "x64"
-          ]
-        },
-        {
-          "target": "nsis",
-          "arch": [
-            "x64"
-          ]
-        }
+        "portable",
+        "nsis"
       ]
     },
     "mac": {

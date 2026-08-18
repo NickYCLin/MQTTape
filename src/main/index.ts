@@ -240,6 +240,7 @@ if (!hasSingleInstanceLock) {
       resolveUpdateSupport({
         isPackaged: app.isPackaged,
         platform: process.platform,
+        arch: process.arch,
         portableExecutableDirectory: process.env.PORTABLE_EXECUTABLE_DIR,
         appImagePath: process.env.APPIMAGE,
         linuxPackageType: readLinuxPackageType()
