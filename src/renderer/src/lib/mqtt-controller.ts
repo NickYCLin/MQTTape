@@ -18,6 +18,10 @@ import {
 import { publishTopicError } from '../../../shared/mqtt-topic'
 import { createMqttPacketEvent } from '../../../shared/packet-flow'
 import { mqttLastWillOptions } from '../../../shared/mqtt-will'
+import {
+  appendWebSocketQueryParameters,
+  webSocketConnectionError
+} from '../../../shared/websocket-auth'
 
 type StatusListener = (event: StatusEvent) => void
 type MessageListener = (message: MqttMessageRecord) => void
@@ -41,11 +45,18 @@ function base64ToBytes(base64: string): Uint8Array {
   return Uint8Array.from(binary, (character) => character.charCodeAt(0))
 }
 
-function brokerUrl(config: ConnectionConfig): string {
+function brokerEndpoint(config: ConnectionConfig): string {
   const rawHost = config.host.trim()
   const host = rawHost.includes(':') && !rawHost.startsWith('[') ? `[${rawHost}]` : rawHost
   const path = `/${config.path.trim().replace(/^\/+/, '')}`
   return `${config.protocol}://${host}:${config.port}${path}`
+}
+
+function brokerUrl(config: ConnectionConfig): string {
+  return appendWebSocketQueryParameters(
+    brokerEndpoint(config),
+    config.websocketQueryParameters
+  )
 }
 
 export class MqttController {
@@ -102,9 +113,11 @@ export class MqttController {
       throw new Error('Web Lite only supports MQTT over WebSocket (ws/wss).')
     }
     if (!config.host.trim()) throw new Error('Broker host is required.')
+    const webSocketError = webSocketConnectionError(config, false)
+    if (webSocketError) throw new Error(webSocketError)
 
     await this.disconnect()
-    this.emitStatus({ state: 'connecting', detail: brokerUrl(config) })
+    this.emitStatus({ state: 'connecting', detail: brokerEndpoint(config) })
 
     const { default: mqtt } = await import('mqtt')
     const will = mqttLastWillOptions(config.will, config.mqttVersion)
@@ -263,7 +276,7 @@ export class MqttController {
 
   private bindWebEvents(client: MqttClient, config: ConnectionConfig): void {
     client.on('connect', () =>
-      this.emitStatus({ state: 'connected', detail: brokerUrl(config) })
+      this.emitStatus({ state: 'connected', detail: brokerEndpoint(config) })
     )
     client.on('reconnect', () => this.emitStatus({ state: 'reconnecting' }))
     client.on('offline', () => this.emitStatus({ state: 'offline' }))

@@ -27,6 +27,9 @@ function config(): ConnectionConfig {
     clientCertificatePath: 'C:/certs/client.pem',
     clientKeyPath: 'C:/certs/client.key',
     clientKeyPassphrase: 'key-secret',
+    websocketAuth: { mode: 'bearer', username: '', secret: 'bearer-secret' },
+    websocketHeaders: [{ name: 'X-API-Key', value: 'header-secret' }],
+    websocketQueryParameters: [{ name: 'access_token', value: 'query-secret' }],
     will: {
       ...defaultMqttLastWill(),
       enabled: true,
@@ -64,9 +67,21 @@ describe('ProfileStore', () => {
     expect(rawFile).not.toContain('broker-secret')
     expect(rawFile).not.toContain('key-secret')
     expect(rawFile).not.toContain('will-payload-secret')
+    expect(rawFile).not.toContain('bearer-secret')
+    expect(rawFile).not.toContain('header-secret')
+    expect(rawFile).not.toContain('query-secret')
+    expect(rawFile).toContain('X-API-Key')
+    expect(rawFile).toContain('access_token')
     expect(loaded.config.password).toBe('broker-secret')
     expect(loaded.config.clientKeyPassphrase).toBe('key-secret')
     expect(loaded.config.will?.payload).toBe('will-payload-secret')
+    expect(loaded.config.websocketAuth?.secret).toBe('bearer-secret')
+    expect(loaded.config.websocketHeaders).toEqual([
+      { name: 'X-API-Key', value: 'header-secret' }
+    ])
+    expect(loaded.config.websocketQueryParameters).toEqual([
+      { name: 'access_token', value: 'query-secret' }
+    ])
     expect(await store.isTrustedTlsPath('C:/certs/client.key')).toBe(true)
   })
 
@@ -87,6 +102,9 @@ describe('ProfileStore', () => {
     expect(rawFile).not.toContain('broker-secret')
     expect(rawFile).not.toContain('key-secret')
     expect(rawFile).not.toContain('will-payload-secret')
+    expect(rawFile).not.toContain('bearer-secret')
+    expect(rawFile).not.toContain('header-secret')
+    expect(rawFile).not.toContain('query-secret')
   })
 
   it('removes previously encrypted secrets when they are cleared', async () => {
@@ -107,6 +125,12 @@ describe('ProfileStore', () => {
         ...saved.config,
         password: '',
         clientKeyPassphrase: '',
+        websocketAuth: saved.config.websocketAuth
+          ? { ...saved.config.websocketAuth, secret: '' }
+          : undefined,
+        websocketHeaders: saved.config.websocketHeaders?.map(({ name }) => ({ name, value: '' })),
+        websocketQueryParameters: saved.config.websocketQueryParameters
+          ?.map(({ name }) => ({ name, value: '' })),
         will: saved.config.will ? { ...saved.config.will, payload: '' } : undefined
       }
     })
@@ -115,6 +139,9 @@ describe('ProfileStore', () => {
     expect(cleared.secretsStored).toBe(false)
     expect(cleared.config.password).toBe('')
     expect(cleared.config.clientKeyPassphrase).toBe('')
+    expect(cleared.config.websocketAuth?.secret).toBe('')
+    expect(cleared.config.websocketHeaders?.[0].value).toBe('')
+    expect(cleared.config.websocketQueryParameters?.[0].value).toBe('')
     expect(rawFile).not.toContain('encryptedSecrets')
   })
 })

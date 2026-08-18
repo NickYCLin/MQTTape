@@ -136,6 +136,25 @@ test('Web Lite keeps multiple Broker workspaces isolated', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Add Broker' })).toBeDisabled()
 })
 
+test('Web Lite configures URL authentication without persisting secret values', async ({ page }) => {
+  await page.goto('/')
+  await page.getByLabel('Profile name').fill('Query auth profile')
+  await page.getByText('Advanced settings').click()
+
+  await expect(page.getByRole('note').filter({ hasText: 'Browser handshake limitation' }))
+    .toContainText('cannot set HTTP headers')
+  await page.getByRole('button', { name: 'Add parameter' }).click()
+  await page.getByLabel('WebSocket query parameter 1 name').fill('access_token')
+  await page.getByLabel('WebSocket query parameter 1 value').fill('web-secret')
+  await page.getByRole('button', { name: 'Save', exact: true }).click()
+
+  await page.reload()
+  await page.getByLabel('Saved broker profile').selectOption({ label: 'Query auth profile' })
+  await page.getByText('Advanced settings').click()
+  await expect(page.getByLabel('WebSocket query parameter 1 name')).toHaveValue('access_token')
+  await expect(page.getByLabel('WebSocket query parameter 1 value')).toHaveValue('')
+})
+
 test('Web Lite keeps two live Broker connections active in parallel', async ({ page }) => {
   const firstBroker = await startWebSocketBroker()
   const secondBroker = await startWebSocketBroker()

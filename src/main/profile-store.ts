@@ -5,6 +5,8 @@ import type {
   BrokerProfile,
   ConnectionConfig,
   MqttLastWillConfig,
+  MqttWebSocketAuth,
+  MqttWebSocketNameValue,
   SaveBrokerProfileRequest
 } from '../shared/contracts'
 
@@ -15,10 +17,22 @@ interface SecretProtector {
 }
 
 type StoredLastWill = Omit<MqttLastWillConfig, 'payload'>
+type StoredWebSocketAuth = Omit<MqttWebSocketAuth, 'secret'>
+type StoredWebSocketNameValue = Omit<MqttWebSocketNameValue, 'value'>
 type StoredConnectionConfig = Omit<
   ConnectionConfig,
-  'password' | 'clientKeyPassphrase' | 'will'
-> & { will?: StoredLastWill }
+  | 'password'
+  | 'clientKeyPassphrase'
+  | 'websocketAuth'
+  | 'websocketHeaders'
+  | 'websocketQueryParameters'
+  | 'will'
+> & {
+  websocketAuth?: StoredWebSocketAuth
+  websocketHeaders?: StoredWebSocketNameValue[]
+  websocketQueryParameters?: StoredWebSocketNameValue[]
+  will?: StoredLastWill
+}
 
 interface StoredProfile {
   id: string
@@ -35,6 +49,9 @@ interface ProfileSecrets {
   password: string
   clientKeyPassphrase: string
   willPayload: string
+  websocketAuthSecret: string
+  websocketHeaderValues: string[]
+  websocketQueryParameterValues: string[]
 }
 
 function withoutSecrets(
@@ -43,12 +60,46 @@ function withoutSecrets(
   const safeConfig: Partial<ConnectionConfig> = { ...config }
   delete safeConfig.password
   delete safeConfig.clientKeyPassphrase
+  delete safeConfig.websocketAuth
+  delete safeConfig.websocketHeaders
+  delete safeConfig.websocketQueryParameters
   if (safeConfig.will) {
     const safeWill: Partial<MqttLastWillConfig> = { ...safeConfig.will }
     delete safeWill.payload
     safeConfig.will = safeWill as MqttLastWillConfig
   }
-  return safeConfig as StoredConnectionConfig
+  return {
+    ...(safeConfig as StoredConnectionConfig),
+    ...(config.websocketAuth
+      ? {
+          websocketAuth: {
+            mode: config.websocketAuth.mode,
+            username: config.websocketAuth.username
+          }
+        }
+      : {}),
+    websocketHeaders: (config.websocketHeaders ?? []).map(({ name }) => ({ name })),
+    websocketQueryParameters: (config.websocketQueryParameters ?? []).map(({ name }) => ({ name }))
+  }
+}
+
+function normalizeStoredNameValues(value: unknown): StoredWebSocketNameValue[] {
+  if (!Array.isArray(value)) return []
+  return value.flatMap((item) => (
+    item && typeof item === 'object' && typeof (item as { name?: unknown }).name === 'string'
+      ? [{ name: (item as { name: string }).name }]
+      : []
+  ))
+}
+
+function normalizeStoredWebSocketAuth(value: unknown): StoredWebSocketAuth | undefined {
+  if (!value || typeof value !== 'object') return undefined
+  const auth = value as Partial<StoredWebSocketAuth>
+  if (auth.mode !== 'none' && auth.mode !== 'basic' && auth.mode !== 'bearer') return undefined
+  return {
+    mode: auth.mode,
+    username: typeof auth.username === 'string' ? auth.username : ''
+  }
 }
 
 function normalizeStoredProfile(value: unknown): StoredProfile | null {
@@ -63,7 +114,12 @@ function normalizeStoredProfile(value: unknown): StoredProfile | null {
       ...candidate.config,
       caPath: candidate.config.caPath ?? '',
       clientCertificatePath: candidate.config.clientCertificatePath ?? '',
-      clientKeyPath: candidate.config.clientKeyPath ?? ''
+      clientKeyPath: candidate.config.clientKeyPath ?? '',
+      websocketAuth: normalizeStoredWebSocketAuth(candidate.config.websocketAuth),
+      websocketHeaders: normalizeStoredNameValues(candidate.config.websocketHeaders),
+      websocketQueryParameters: normalizeStoredNameValues(
+        candidate.config.websocketQueryParameters
+      )
     },
     encryptedSecrets: typeof candidate.encryptedSecrets === 'string'
       ? candidate.encryptedSecrets
@@ -92,10 +148,19 @@ export class ProfileStore {
     const secrets: ProfileSecrets = {
       password: request.config.password,
       clientKeyPassphrase: request.config.clientKeyPassphrase,
-      willPayload: request.config.will?.payload ?? ''
+      willPayload: request.config.will?.payload ?? '',
+      websocketAuthSecret: request.config.websocketAuth?.secret ?? '',
+      websocketHeaderValues: (request.config.websocketHeaders ?? []).map(({ value }) => value),
+      websocketQueryParameterValues: (request.config.websocketQueryParameters ?? [])
+        .map(({ value }) => value)
     }
     const hasNewSecrets = Boolean(
-      secrets.password || secrets.clientKeyPassphrase || secrets.willPayload
+      secrets.password ||
+      secrets.clientKeyPassphrase ||
+      secrets.willPayload ||
+      secrets.websocketAuthSecret ||
+      secrets.websocketHeaderValues.some(Boolean) ||
+      secrets.websocketQueryParameterValues.some(Boolean)
     )
     let encryptedSecrets: string | undefined
 
@@ -163,6 +228,18 @@ export class ProfileStore {
         ...storedConfig,
         password: secrets.password,
         clientKeyPassphrase: secrets.clientKeyPassphrase,
+        websocketAuth: storedConfig.websocketAuth
+          ? { ...storedConfig.websocketAuth, secret: secrets.websocketAuthSecret }
+          : undefined,
+        websocketHeaders: (storedConfig.websocketHeaders ?? []).map(({ name }, index) => ({
+          name,
+          value: secrets.websocketHeaderValues[index] ?? ''
+        })),
+        websocketQueryParameters: (storedConfig.websocketQueryParameters ?? [])
+          .map(({ name }, index) => ({
+            name,
+            value: secrets.websocketQueryParameterValues[index] ?? ''
+          })),
         ...(will
           ? { will: { ...will, payload: secrets.willPayload } }
           : {})
@@ -173,7 +250,14 @@ export class ProfileStore {
 
   private decryptSecrets(value: string | undefined): ProfileSecrets {
     if (!value || !this.protector.isAvailable()) {
-      return { password: '', clientKeyPassphrase: '', willPayload: '' }
+      return {
+        password: '',
+        clientKeyPassphrase: '',
+        willPayload: '',
+        websocketAuthSecret: '',
+        websocketHeaderValues: [],
+        websocketQueryParameterValues: []
+      }
     }
 
     try {
@@ -185,10 +269,26 @@ export class ProfileStore {
         clientKeyPassphrase: typeof secrets.clientKeyPassphrase === 'string'
           ? secrets.clientKeyPassphrase
           : '',
-        willPayload: typeof secrets.willPayload === 'string' ? secrets.willPayload : ''
+        willPayload: typeof secrets.willPayload === 'string' ? secrets.willPayload : '',
+        websocketAuthSecret: typeof secrets.websocketAuthSecret === 'string'
+          ? secrets.websocketAuthSecret
+          : '',
+        websocketHeaderValues: Array.isArray(secrets.websocketHeaderValues)
+          ? secrets.websocketHeaderValues.map((item) => typeof item === 'string' ? item : '')
+          : [],
+        websocketQueryParameterValues: Array.isArray(secrets.websocketQueryParameterValues)
+          ? secrets.websocketQueryParameterValues.map((item) => typeof item === 'string' ? item : '')
+          : []
       }
     } catch {
-      return { password: '', clientKeyPassphrase: '', willPayload: '' }
+      return {
+        password: '',
+        clientKeyPassphrase: '',
+        willPayload: '',
+        websocketAuthSecret: '',
+        websocketHeaderValues: [],
+        websocketQueryParameterValues: []
+      }
     }
   }
 }

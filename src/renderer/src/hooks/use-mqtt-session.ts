@@ -20,6 +20,7 @@ import { publishTopicError } from '../../../shared/mqtt-topic'
 import { createReplayPlan, replayDelay, replayTimingScale } from '../../../shared/replay'
 import { updateMqttPacketFlows } from '../../../shared/packet-flow'
 import { defaultMqttLastWill } from '../../../shared/mqtt-will'
+import { defaultMqttWebSocketAuth } from '../../../shared/websocket-auth'
 import { MqttController } from '../lib/mqtt-controller'
 
 const MAX_MESSAGES = 5_000
@@ -64,6 +65,9 @@ function captureConnection(config: ConnectionConfig): CaptureFile['connection'] 
   delete safeConfig.clientCertificatePath
   delete safeConfig.clientKeyPath
   delete safeConfig.clientKeyPassphrase
+  delete safeConfig.websocketAuth
+  delete safeConfig.websocketHeaders
+  delete safeConfig.websocketQueryParameters
   delete safeConfig.will
   return safeConfig as CaptureFile['connection']
 }
@@ -77,6 +81,12 @@ function webSafeConfig(config: ConnectionConfig): ConnectionConfig {
     clientCertificatePath: '',
     clientKeyPath: '',
     clientKeyPassphrase: '',
+    websocketAuth: config.websocketAuth
+      ? { ...config.websocketAuth, secret: '' }
+      : defaultMqttWebSocketAuth(),
+    websocketHeaders: (config.websocketHeaders ?? []).map(({ name }) => ({ name, value: '' })),
+    websocketQueryParameters: (config.websocketQueryParameters ?? [])
+      .map(({ name }) => ({ name, value: '' })),
     ...(config.will ? { will: { ...config.will, payload: '' } } : {})
   }
 }
@@ -118,6 +128,9 @@ function defaultConfig(isDesktop: boolean): ConnectionConfig {
     clientCertificatePath: '',
     clientKeyPath: '',
     clientKeyPassphrase: '',
+    websocketAuth: defaultMqttWebSocketAuth(),
+    websocketHeaders: [],
+    websocketQueryParameters: [],
     will: defaultMqttLastWill()
   }
 }
@@ -243,7 +256,14 @@ export function useMqttSession(sessionId = 'default') {
     window.dispatchEvent(new Event(PROFILES_UPDATED_EVENT))
     if (
       window.mqttape &&
-      (config.password || config.clientKeyPassphrase || config.will?.payload) &&
+      (
+        config.password ||
+        config.clientKeyPassphrase ||
+        config.will?.payload ||
+        config.websocketAuth?.secret ||
+        config.websocketHeaders?.some(({ value }) => value) ||
+        config.websocketQueryParameters?.some(({ value }) => value)
+      ) &&
       !savedProfile.secretsStored
     ) {
       setError('Profile saved, but secure OS storage is unavailable; secrets were not stored.')

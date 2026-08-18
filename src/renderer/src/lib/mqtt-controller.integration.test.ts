@@ -21,6 +21,7 @@ describe('MqttController Web Lite integration', () => {
   let server: Server
   let webSocketServer: WebSocketServer
   let port: number
+  let latestRequestUrl = ''
   const originalWindow = Object.getOwnPropertyDescriptor(globalThis, 'window')
 
   beforeAll(async () => {
@@ -32,6 +33,7 @@ describe('MqttController Web Lite integration', () => {
     server = createServer()
     webSocketServer = new WebSocketServer({ server, path: '/mqtt' })
     webSocketServer.on('connection', (socket, request) => {
+      latestRequestUrl = request.url ?? ''
       broker.handle(createWebSocketStream(socket), request)
     })
     await new Promise<void>((resolve, reject) => {
@@ -74,7 +76,8 @@ describe('MqttController Web Lite integration', () => {
       caPath: '',
       clientCertificatePath: '',
       clientKeyPath: '',
-      clientKeyPassphrase: ''
+      clientKeyPassphrase: '',
+      websocketQueryParameters: [{ name: 'access_token', value: 'web secret' }]
     }
 
     await controller.connect(config)
@@ -95,6 +98,9 @@ describe('MqttController Web Lite integration', () => {
     await waitFor(() => messages.some((message) => message.direction === 'incoming'))
 
     expect(statuses.some((status) => status.state === 'connected')).toBe(true)
+    expect(latestRequestUrl).toBe('/mqtt?access_token=web+secret')
+    expect(statuses.find((status) => status.state === 'connected')?.detail)
+      .not.toContain('access_token')
     expect(messages).toEqual(expect.arrayContaining([
       expect.objectContaining({ direction: 'outgoing', topic: 'mqttape/websocket' }),
       expect.objectContaining({

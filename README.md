@@ -9,6 +9,7 @@ MQTTape 是一套可在桌面與瀏覽器使用的開源 MQTT 除錯工具。它
 - 支援 MQTT 3.1.1 與 MQTT 5.0
 - 桌面版支援 MQTT over TCP、TLS、WebSocket 與 Secure WebSocket
 - Web Lite 支援 `ws://` 與 `wss://` Broker
+- WebSocket URL Query Parameters；桌面版另支援 HTTP Basic、Bearer Token 與自訂握手 Header
 - 最多同時開啟 8 個相互隔離的 Broker 工作階段，並以分頁顯示連線狀態與背景未讀訊息
 - 支援 QoS 0、1、2 的發布與訂閱
 - 即時檢視 QoS 0、1、2 的控制封包流程、方向、Packet ID、DUP、Reason Code 與等待狀態
@@ -59,6 +60,7 @@ MQTTape 是一套可在桌面與瀏覽器使用的開源 MQTT 除錯工具。它
 | 應用程式自動更新 | 支援的安裝套件 | 由瀏覽器處理 |
 | CBOR／Protobuf／Sparkplug B Viewer | 支援 | 支援 |
 | 多 Broker 同時連線 | 最多 8 個 | 最多 8 個 |
+| WebSocket 進階認證 | Basic／Bearer／Header／Query | Query Parameters |
 
 瀏覽器無法開啟任意 TCP Socket，因此 Web Lite 的通訊協定選單只提供 WebSocket Transport。
 
@@ -71,6 +73,14 @@ Web Lite 發布於 <https://nickyclin.github.io/MQTTape/>。由於 GitHub Pages 
 使用標題列下方的「新增 Broker」可以同時開啟最多 8 個工作階段。每個分頁都有自己的 MQTT Client、連線狀態、訂閱、訊息時間軸、QoS 封包流程、Topic 樹、Downlink 狀態與重播進度；切換分頁時，背景工作階段仍會維持連線並繼續收訊息，分頁上的數字會標示新增的未讀訊息。
 
 設定檔是全域共用的，因此可在任一分頁儲存後從其他分頁載入；載入同一個設定檔不代表共用 MQTT 連線，各分頁仍需使用不衝突的 Client ID。LoRaWAN Downlink 歷史會依設定檔或 Broker Endpoint 分開保存，避免不同環境的事件互相關聯。關閉工作階段時，MQTTape 會正常送出 MQTT `DISCONNECT` 並清除該分頁的執行期資料，因此不會把正常關閉誤判為需要發布 Last Will 的異常斷線。
+
+## WebSocket 進階認證
+
+MQTT over WebSocket 可能先經過 Reverse Proxy、API Gateway 或雲端服務的 HTTP 驗證，再進入 MQTT `CONNECT`。桌面版可在「進階設定」中選擇 HTTP Basic、Bearer Token，或加入最多 32 個自訂握手 Header；`Host`、`Connection`、`Upgrade` 與 `Sec-WebSocket-*` 等協定 Header 仍由 WebSocket Client 管理，MQTTape 不允許覆寫。這組 HTTP 認證與一般 MQTT 使用者名稱／密碼互相獨立。
+
+桌面版與 Web Lite 都可以加入最多 32 個 URL Query Parameters，名稱和值會經過 URL 編碼。瀏覽器的 WebSocket API 不允許網頁自行加入握手 Header，因此 Web Lite 無法使用 Basic、Bearer 或自訂 Header；若 Broker 支援 Query Token，可改用 Query Parameters，否則請使用桌面版。
+
+Authorization 秘密、自訂 Header 值與 Query 值都不會顯示在狀態列或寫入 MQTTape 擷取檔。桌面設定檔會使用作業系統安全儲存空間加密這些值；Web Lite 只保存欄位名稱，不保存秘密值，載入設定檔後必須重新輸入。靜態 Token 在自動重新連線時會重複使用；需要動態更新或重新簽署的短效 URL，請在外部取得新值後重新連線。
 
 ## LoRaWAN MQTT
 
@@ -120,7 +130,7 @@ ChirpStack:      application/<application-id>/device/+/event/+
 
 ## 設定檔與 mTLS
 
-桌面版設定檔會存放在 Electron User Data 目錄。密碼與 Private Key Passphrase 會透過 Electron `safeStorage` 使用作業系統加密；MQTTape 不會退回以純文字儲存秘密。Web Lite 可以保存非敏感的連線設定，但會刻意捨棄密碼與憑證路徑。
+桌面版設定檔會存放在 Electron User Data 目錄。密碼、Private Key Passphrase、WebSocket Authorization、自訂 Header 值與 Query 值會透過 Electron `safeStorage` 使用作業系統加密；MQTTape 不會退回以純文字儲存秘密。Web Lite 可以保存非敏感的連線設定與 Query 名稱，但會刻意捨棄密碼、Query 值與憑證路徑。
 
 啟用 Last Will 時，桌面版也會把 Will Payload 放入同一份作業系統加密資料，而不會以純文字寫入設定檔。Web Lite 只保存 Will 的 Topic、格式、QoS、Retain 與 MQTT 5 屬性，不保存 Will Payload；載入設定檔後需要重新輸入。Will 設定不會寫入 MQTTape 擷取檔。
 
@@ -244,7 +254,6 @@ MQTTape 使用 `protobufjs` 解析 Schema 的反射資訊，但以內建的直�
 
 ## Roadmap
 
-- 自訂 WebSocket Header 與進階認證
 - 已簽章安裝程式與更多 CPU 架構
 
 ## 參與貢獻

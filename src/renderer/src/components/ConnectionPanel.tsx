@@ -4,11 +4,18 @@ import type {
   ConnectionConfig,
   MqttProtocol,
   MqttQos,
+  MqttWebSocketAuthMode,
+  MqttWebSocketNameValue,
   MqttWillPayloadFormat,
   TlsFileKind
 } from '../../../shared/contracts'
 import { defaultMqttLastWill } from '../../../shared/mqtt-will'
-import { PlugIcon, PowerIcon } from './icons'
+import {
+  defaultMqttWebSocketAuth,
+  MAX_WEBSOCKET_HEADERS,
+  MAX_WEBSOCKET_QUERY_PARAMETERS
+} from '../../../shared/websocket-auth'
+import { PlugIcon, PowerIcon, XIcon } from './icons'
 import { useI18n } from '../i18n'
 import type { TranslationKey } from '../lib/i18n'
 
@@ -65,6 +72,10 @@ export function ConnectionPanel({
     value: ConnectionConfig[Key]
   ): void => onChange({ ...config, [key]: value })
   const will = config.will ?? defaultMqttLastWill()
+  const websocketAuth = config.websocketAuth ?? defaultMqttWebSocketAuth()
+  const websocketHeaders = config.websocketHeaders ?? []
+  const websocketQueryParameters = config.websocketQueryParameters ?? []
+  const websocketTransport = config.protocol === 'ws' || config.protocol === 'wss'
   const updateWill = <Key extends keyof typeof will>(
     key: Key,
     value: (typeof will)[Key]
@@ -73,6 +84,25 @@ export function ConnectionPanel({
   const changeProtocol = (protocol: MqttProtocol): void => {
     onChange({ ...config, protocol, port: defaultPorts[protocol] })
   }
+
+  const updateWebSocketValue = (
+    field: 'websocketHeaders' | 'websocketQueryParameters',
+    values: MqttWebSocketNameValue[],
+    index: number,
+    key: keyof MqttWebSocketNameValue,
+    value: string
+  ): void => {
+    const next = values.map((item, itemIndex) => (
+      itemIndex === index ? { ...item, [key]: value } : item
+    ))
+    update(field, next)
+  }
+
+  const removeWebSocketValue = (
+    field: 'websocketHeaders' | 'websocketQueryParameters',
+    values: MqttWebSocketNameValue[],
+    index: number
+  ): void => update(field, values.filter((_item, itemIndex) => itemIndex !== index))
 
   const chooseTlsFile = async (
     field: 'caPath' | 'clientCertificatePath' | 'clientKeyPath',
@@ -269,6 +299,197 @@ export function ConnectionPanel({
               />
               <span>{t('connection.cleanSession')}</span>
             </label>
+            {websocketTransport && (
+              <section className="websocket-auth-group">
+                <div className="websocket-auth-head">
+                  <div>
+                    <span className="group-label">{t('connection.websocketHandshake')}</span>
+                    <p>{t('connection.websocketHandshakeHelp')}</p>
+                  </div>
+                  <span className="tag">HTTP</span>
+                </div>
+
+                {isDesktop ? (
+                  <>
+                    <label className="field">
+                      <span>{t('connection.websocketAuthMode')}</span>
+                      <select
+                        value={websocketAuth.mode}
+                        disabled={connected || connecting}
+                        onChange={(event) => update('websocketAuth', {
+                          ...websocketAuth,
+                          mode: event.target.value as MqttWebSocketAuthMode
+                        })}
+                      >
+                        <option value="none">{t('connection.websocketAuthNone')}</option>
+                        <option value="basic">{t('connection.websocketAuthBasic')}</option>
+                        <option value="bearer">{t('connection.websocketAuthBearer')}</option>
+                      </select>
+                    </label>
+                    {websocketAuth.mode === 'basic' && (
+                      <label className="field">
+                        <span>{t('connection.websocketAuthUsername')}</span>
+                        <input
+                          value={websocketAuth.username}
+                          disabled={connected || connecting}
+                          autoComplete="username"
+                          onChange={(event) => update('websocketAuth', {
+                            ...websocketAuth,
+                            username: event.target.value
+                          })}
+                        />
+                      </label>
+                    )}
+                    {websocketAuth.mode !== 'none' && (
+                      <label className="field">
+                        <span>{t(websocketAuth.mode === 'basic'
+                          ? 'connection.websocketAuthPassword'
+                          : 'connection.websocketAuthToken')}</span>
+                        <input
+                          type="password"
+                          value={websocketAuth.secret}
+                          disabled={connected || connecting}
+                          autoComplete="off"
+                          placeholder={t('connection.websocketSecretPlaceholder')}
+                          onChange={(event) => update('websocketAuth', {
+                            ...websocketAuth,
+                            secret: event.target.value
+                          })}
+                        />
+                      </label>
+                    )}
+
+                    <div className="websocket-value-list">
+                      <div className="websocket-value-head">
+                        <strong>{t('connection.websocketHeaders')}</strong>
+                        <button
+                          className="btn ghost sm"
+                          type="button"
+                          disabled={connected || connecting || websocketHeaders.length >= MAX_WEBSOCKET_HEADERS}
+                          onClick={() => update('websocketHeaders', [
+                            ...websocketHeaders,
+                            { name: '', value: '' }
+                          ])}
+                        >
+                          {t('connection.websocketAddHeader')}
+                        </button>
+                      </div>
+                      {websocketHeaders.length === 0 && (
+                        <p className="hint">{t('connection.websocketHeadersEmpty')}</p>
+                      )}
+                      {websocketHeaders.map((header, index) => (
+                        <div className="websocket-value-row" key={`header-${index}`}>
+                          <input
+                            className="mono"
+                            aria-label={t('connection.websocketHeaderName', { count: index + 1 })}
+                            value={header.name}
+                            disabled={connected || connecting}
+                            placeholder="X-Tenant-ID"
+                            spellCheck={false}
+                            onChange={(event) => updateWebSocketValue(
+                              'websocketHeaders', websocketHeaders, index, 'name', event.target.value
+                            )}
+                          />
+                          <input
+                            className="mono"
+                            type="password"
+                            aria-label={t('connection.websocketHeaderValue', { count: index + 1 })}
+                            value={header.value}
+                            disabled={connected || connecting}
+                            placeholder={t('connection.websocketSecretValue')}
+                            autoComplete="off"
+                            spellCheck={false}
+                            onChange={(event) => updateWebSocketValue(
+                              'websocketHeaders', websocketHeaders, index, 'value', event.target.value
+                            )}
+                          />
+                          <button
+                            className="btn ghost icon sm"
+                            type="button"
+                            disabled={connected || connecting}
+                            aria-label={t('connection.websocketRemoveHeader', { count: index + 1 })}
+                            onClick={() => removeWebSocketValue(
+                              'websocketHeaders', websocketHeaders, index
+                            )}
+                          >
+                            <XIcon width={13} height={13} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <div className="notice info" role="note">
+                    <strong>{t('connection.websocketBrowserLimit')}</strong>
+                    <span>{t('connection.websocketBrowserLimitHelp')}</span>
+                  </div>
+                )}
+
+                <div className="websocket-value-list">
+                  <div className="websocket-value-head">
+                    <strong>{t('connection.websocketQueryParameters')}</strong>
+                    <button
+                      className="btn ghost sm"
+                      type="button"
+                      disabled={connected || connecting || websocketQueryParameters.length >= MAX_WEBSOCKET_QUERY_PARAMETERS}
+                      onClick={() => update('websocketQueryParameters', [
+                        ...websocketQueryParameters,
+                        { name: '', value: '' }
+                      ])}
+                    >
+                      {t('connection.websocketAddQueryParameter')}
+                    </button>
+                  </div>
+                  <p className="hint">{t('connection.websocketQueryHelp')}</p>
+                  {websocketQueryParameters.map((parameter, index) => (
+                    <div className="websocket-value-row" key={`query-${index}`}>
+                      <input
+                        className="mono"
+                        aria-label={t('connection.websocketQueryName', { count: index + 1 })}
+                        value={parameter.name}
+                        disabled={connected || connecting}
+                        placeholder="access_token"
+                        spellCheck={false}
+                        onChange={(event) => updateWebSocketValue(
+                          'websocketQueryParameters', websocketQueryParameters,
+                          index, 'name', event.target.value
+                        )}
+                      />
+                      <input
+                        className="mono"
+                        type="password"
+                        aria-label={t('connection.websocketQueryValue', { count: index + 1 })}
+                        value={parameter.value}
+                        disabled={connected || connecting}
+                        placeholder={t('connection.websocketSecretValue')}
+                        autoComplete="off"
+                        spellCheck={false}
+                        onChange={(event) => updateWebSocketValue(
+                          'websocketQueryParameters', websocketQueryParameters,
+                          index, 'value', event.target.value
+                        )}
+                      />
+                      <button
+                        className="btn ghost icon sm"
+                        type="button"
+                        disabled={connected || connecting}
+                        aria-label={t('connection.websocketRemoveQueryParameter', { count: index + 1 })}
+                        onClick={() => removeWebSocketValue(
+                          'websocketQueryParameters', websocketQueryParameters, index
+                        )}
+                      >
+                        <XIcon width={13} height={13} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <p className="websocket-storage-note">
+                  {t(isDesktop
+                    ? 'connection.websocketStorageDesktop'
+                    : 'connection.websocketStorageWeb')}
+                </p>
+              </section>
+            )}
             <section className={`will-group ${will.enabled ? 'enabled' : ''}`}>
               <div className="will-group-head">
                 <label className="checkbox">

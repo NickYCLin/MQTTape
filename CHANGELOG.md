@@ -6,6 +6,8 @@ All notable changes to MQTTape are documented in this file.
 
 ### Added
 
+- Desktop WebSocket handshake authentication with HTTP Basic, Bearer tokens, and validated custom headers, plus URL query parameters in both desktop and Web Lite.
+- OS-encrypted desktop profile storage for WebSocket authentication values, Web Lite secret omission, and capture/status privacy guards.
 - Up to eight simultaneous, tabbed Broker sessions with isolated MQTT clients, subscriptions, captures, packet flows, replay state, and background unread counts.
 - Broker-scoped LoRaWAN downlink history plus live profile-list synchronization between open sessions.
 - MQTT Last Will configuration for UTF-8, Hex, and Base64 payloads, QoS, Retain, and MQTT 5 Will Delay, Message Expiry, Content Type, and Payload Format properties.
