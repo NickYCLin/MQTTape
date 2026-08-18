@@ -1,7 +1,9 @@
 import { createServer, type Server } from 'node:net'
+import { createServer as createHttpServer } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { Aedes } from 'aedes'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { createWebSocketStream, WebSocketServer } from 'ws'
 import type { ConnectionConfig, MqttMessageRecord, MqttPacketEvent, StatusEvent } from '../shared/contracts'
 import { updateMqttPacketFlows } from '../shared/packet-flow'
 import { MqttService } from './mqtt-service'
@@ -199,5 +201,47 @@ describe('MqttService integration', () => {
     })).rejects.toThrow('MQTT 5 publish properties require an MQTT 5 connection.')
 
     await service.disconnect()
+  })
+
+  it('sends desktop WebSocket auth headers and encoded query parameters', async () => {
+    const webSocketBroker = await Aedes.createBroker()
+    const httpServer = createHttpServer()
+    const webSocketServer = new WebSocketServer({ server: httpServer, path: '/mqtt' })
+    let authorization = ''
+    let tenant = ''
+    let requestUrl = ''
+    webSocketServer.on('connection', (socket, request) => {
+      authorization = request.headers.authorization ?? ''
+      tenant = typeof request.headers['x-tenant-id'] === 'string'
+        ? request.headers['x-tenant-id']
+        : ''
+      requestUrl = request.url ?? ''
+      webSocketBroker.handle(createWebSocketStream(socket), request)
+    })
+    await new Promise<void>((resolve, reject) => {
+      httpServer.once('error', reject)
+      httpServer.listen(0, '127.0.0.1', resolve)
+    })
+    const webSocketPort = (httpServer.address() as AddressInfo).port
+    const service = new MqttService(() => undefined, () => undefined)
+
+    try {
+      await service.connect({
+        ...connectionConfig(webSocketPort, 'mqttape_websocket_auth'),
+        protocol: 'ws',
+        websocketAuth: { mode: 'bearer', username: '', secret: 'bearer-secret' },
+        websocketHeaders: [{ name: 'X-Tenant-ID', value: 'taipei' }],
+        websocketQueryParameters: [{ name: 'access_token', value: 'query secret' }]
+      })
+
+      expect(authorization).toBe('Bearer bearer-secret')
+      expect(tenant).toBe('taipei')
+      expect(requestUrl).toBe('/mqtt?access_token=query+secret')
+    } finally {
+      await service.disconnect()
+      await new Promise<void>((resolve) => webSocketServer.close(() => resolve()))
+      await new Promise<void>((resolve) => httpServer.close(() => resolve()))
+      await new Promise<void>((resolve) => webSocketBroker.close(resolve))
+    }
   })
 })

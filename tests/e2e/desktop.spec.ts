@@ -44,9 +44,20 @@ test('desktop shell starts with the restricted preload bridge', async () => {
     const updateStatus = await window.evaluate(() => window.mqttape!.getUpdateStatus())
     expect(updateStatus).toMatchObject({ mode: 'disabled', reason: 'development' })
 
+    await window.getByLabel('Protocol').selectOption('wss')
+    await window.getByText('Advanced settings').click()
+    await window.getByLabel('HTTP Authorization preset').selectOption('basic')
+    await expect(window.getByLabel('HTTP Basic username')).toBeVisible()
+    await expect(window.getByLabel('HTTP Basic password')).toBeVisible()
+    await window.getByRole('button', { name: 'Add header' }).click()
+    await expect(window.getByLabel('WebSocket header 1 name')).toBeVisible()
+    await window.getByRole('button', { name: 'Add parameter' }).click()
+    await expect(window.getByLabel('WebSocket query parameter 1 name')).toBeVisible()
+
     await window.getByLabel('Interface language').selectOption('zh-TW')
     await expect(window.getByTitle('桌面完整版')).toBeVisible()
-    await expect(window.getByRole('note')).toContainText('登記連接埠 1883')
+    await expect(window.getByRole('note')).toContainText('8084 是部分 Broker 的常見預設')
+    await expect(window.getByLabel('HTTP Basic 使用者名稱')).toBeVisible()
   } finally {
     try {
       await application?.close()

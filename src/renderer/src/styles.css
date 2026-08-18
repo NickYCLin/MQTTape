@@ -898,6 +898,30 @@ input[type='checkbox'] {
 .advanced summary:hover { color: var(--text); }
 .advanced > .field-grid { padding: 4px 0 16px; }
 
+.websocket-auth-group {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+.websocket-auth-head,
+.websocket-value-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.websocket-auth-head > div { min-width: 0; display: grid; gap: 3px; }
+.websocket-auth-head p,
+.websocket-storage-note { margin: 0; color: var(--text-3); font-size: 11px; line-height: 1.45; }
+.websocket-value-list { display: grid; gap: 7px; }
+.websocket-value-head strong { font-size: 11px; font-weight: 650; }
+.websocket-value-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 30px;
+  gap: 6px;
+  align-items: center;
+}
+.websocket-value-row input { min-width: 0; }
+.websocket-value-row input:first-child { grid-column: 1 / -1; }
+
 .will-group {
   display: grid;
   gap: 7px;
@@ -2245,6 +2269,9 @@ input[type='checkbox'] {
   .publish-property-grid,
   .correlation-row,
   .publish-user-property { grid-template-columns: 1fr; }
+  .websocket-value-row { grid-template-columns: minmax(0, 1fr) 30px; }
+  .websocket-value-row > input:nth-child(2) { grid-column: 1; grid-row: 2; }
+  .websocket-value-row > button { grid-column: 2; grid-row: 1 / span 2; }
   .publish-user-property > .btn { justify-self: start; }
   .toast { right: 12px; left: 12px; min-width: 0; }
 }

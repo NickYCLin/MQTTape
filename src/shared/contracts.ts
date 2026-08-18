@@ -5,6 +5,7 @@ export type MqttQos = 0 | 1 | 2
 export type MqttVersion = 4 | 5
 export type MqttSessionId = string
 export type MqttWillPayloadFormat = 'text' | 'hex' | 'base64'
+export type MqttWebSocketAuthMode = 'none' | 'basic' | 'bearer'
 export type TlsFileKind = 'ca' | 'certificate' | 'key'
 export type ConnectionState =
   | 'disconnected'
@@ -32,7 +33,21 @@ export interface ConnectionConfig {
   clientCertificatePath: string
   clientKeyPath: string
   clientKeyPassphrase: string
+  websocketAuth?: MqttWebSocketAuth
+  websocketHeaders?: MqttWebSocketNameValue[]
+  websocketQueryParameters?: MqttWebSocketNameValue[]
   will?: MqttLastWillConfig
+}
+
+export interface MqttWebSocketAuth {
+  mode: MqttWebSocketAuthMode
+  username: string
+  secret: string
+}
+
+export interface MqttWebSocketNameValue {
+  name: string
+  value: string
 }
 
 export interface MqttLastWillConfig {
@@ -134,7 +149,15 @@ export interface CaptureFile {
   exportedAt: string
   connection: Omit<
     ConnectionConfig,
-    'password' | 'caPath' | 'clientCertificatePath' | 'clientKeyPath' | 'clientKeyPassphrase' | 'will'
+    | 'password'
+    | 'caPath'
+    | 'clientCertificatePath'
+    | 'clientKeyPath'
+    | 'clientKeyPassphrase'
+    | 'websocketAuth'
+    | 'websocketHeaders'
+    | 'websocketQueryParameters'
+    | 'will'
   >
   messages: MqttMessageRecord[]
 }

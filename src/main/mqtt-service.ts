@@ -25,13 +25,36 @@ import {
 import { publishTopicError } from '../shared/mqtt-topic'
 import { createMqttPacketEvent } from '../shared/packet-flow'
 import { mqttLastWillOptions } from '../shared/mqtt-will'
+import {
+  appendWebSocketQueryParameters,
+  activeWebSocketValues,
+  defaultMqttWebSocketAuth,
+  webSocketConnectionError
+} from '../shared/websocket-auth'
 
 type StatusListener = (event: StatusEvent) => void
 type MessageListener = (message: MqttMessageRecord) => void
 type PacketListener = (event: MqttPacketEvent) => void
-type SecureClientOptions = IClientOptions & { passphrase?: string }
+type SecureClientOptions = IClientOptions & {
+  passphrase?: string
+  wsOptions?: { headers?: Record<string, string> }
+}
+
+export function buildBrokerUrl(config: ConnectionConfig): string {
+  const rawHost = config.host.trim()
+  const host = rawHost.includes(':') && !rawHost.startsWith('[') ? `[${rawHost}]` : rawHost
+  const path = config.protocol === 'ws' || config.protocol === 'wss'
+    ? `/${config.path.trim().replace(/^\/+/, '')}`
+    : ''
+  const endpoint = `${config.protocol}://${host}:${config.port}${path}`
+  return config.protocol === 'ws' || config.protocol === 'wss'
+    ? appendWebSocketQueryParameters(endpoint, config.websocketQueryParameters)
+    : endpoint
+}
 
 export async function createClientOptions(config: ConnectionConfig): Promise<IClientOptions> {
+  const webSocketError = webSocketConnectionError(config, true)
+  if (webSocketError) throw new Error(webSocketError)
   const options: SecureClientOptions = {
     clientId: config.clientId || undefined,
     username: config.username || undefined,
@@ -67,6 +90,19 @@ export async function createClientOptions(config: ConnectionConfig): Promise<ICl
   if (config.clientCertificatePath) options.cert = await readFile(config.clientCertificatePath)
   if (config.clientKeyPath) options.key = await readFile(config.clientKeyPath)
   if (config.clientKeyPassphrase) options.passphrase = config.clientKeyPassphrase
+
+  if (config.protocol === 'ws' || config.protocol === 'wss') {
+    const headers = Object.fromEntries(
+      activeWebSocketValues(config.websocketHeaders).map(({ name, value }) => [name.trim(), value])
+    )
+    const auth = config.websocketAuth ?? defaultMqttWebSocketAuth()
+    if (auth.mode === 'basic') {
+      headers.Authorization = `Basic ${Buffer.from(`${auth.username}:${auth.secret}`).toString('base64')}`
+    } else if (auth.mode === 'bearer') {
+      headers.Authorization = `Bearer ${auth.secret}`
+    }
+    if (Object.keys(headers).length > 0) options.wsOptions = { headers }
+  }
   return options
 }
 
@@ -93,7 +129,7 @@ export class MqttService {
 
     const options = await createClientOptions(config)
 
-    const client = mqtt.connect(this.buildUrl(config), options)
+    const client = mqtt.connect(buildBrokerUrl(config), options)
     this.client = client
     this.bindEvents(client, config)
 
@@ -284,17 +320,9 @@ export class MqttService {
     if (!Number.isInteger(config.port) || config.port < 1 || config.port > 65_535) {
       throw new Error('Broker port must be between 1 and 65535.')
     }
+    const webSocketError = webSocketConnectionError(config, true)
+    if (webSocketError) throw new Error(webSocketError)
     mqttLastWillOptions(config.will, config.mqttVersion)
-  }
-
-  private buildUrl(config: ConnectionConfig): string {
-    const rawHost = config.host.trim()
-    const host = rawHost.includes(':') && !rawHost.startsWith('[') ? `[${rawHost}]` : rawHost
-    const path = config.protocol === 'ws' || config.protocol === 'wss'
-      ? `/${config.path.trim().replace(/^\/+/, '')}`
-      : ''
-
-    return `${config.protocol}://${host}:${config.port}${path}`
   }
 
   private describeEndpoint(config: ConnectionConfig): string {

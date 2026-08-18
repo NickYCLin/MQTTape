@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import type { IClientOptions } from 'mqtt'
 import { afterEach, describe, expect, it } from 'vitest'
 import type { ConnectionConfig } from '../shared/contracts'
-import { createClientOptions } from './mqtt-service'
+import { buildBrokerUrl, createClientOptions } from './mqtt-service'
 import { defaultMqttLastWill } from '../shared/mqtt-will'
 
 const temporaryDirectories: string[] = []
@@ -104,5 +104,30 @@ describe('MQTT client options', () => {
       }
     })
     expect(options.will?.payload).toEqual(Buffer.from([0xde, 0xad, 0xbe, 0xef]))
+  })
+
+  it('builds WebSocket handshake authentication and encoded query parameters', async () => {
+    const websocketConfig = config({
+      protocol: 'wss',
+      port: 8084,
+      path: 'mqtt',
+      websocketAuth: { mode: 'basic', username: 'device', secret: 'http-secret' },
+      websocketHeaders: [{ name: 'X-Tenant-ID', value: 'taipei' }],
+      websocketQueryParameters: [
+        { name: 'region', value: '臺北 office' },
+        { name: 'scope', value: 'read/write' }
+      ]
+    })
+    const options = await createClientOptions(websocketConfig) as IClientOptions & {
+      wsOptions: { headers: Record<string, string> }
+    }
+
+    expect(options.wsOptions.headers).toEqual({
+      Authorization: 'Basic ZGV2aWNlOmh0dHAtc2VjcmV0',
+      'X-Tenant-ID': 'taipei'
+    })
+    expect(buildBrokerUrl(websocketConfig)).toBe(
+      'wss://broker.example.com:8084/mqtt?region=%E8%87%BA%E5%8C%97+office&scope=read%2Fwrite'
+    )
   })
 })
