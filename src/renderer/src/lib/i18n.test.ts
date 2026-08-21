@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  DEFAULT_LANGUAGE,
   LANGUAGE_STORAGE_KEY,
   readLanguage,
   translate,
@@ -20,12 +21,13 @@ class MemoryStorage {
 }
 
 describe('i18n', () => {
-  it('defaults to English when no supported language is stored', () => {
+  it('defaults to Traditional Chinese when no supported language is stored', () => {
     const storage = new MemoryStorage()
-    expect(readLanguage(storage)).toBe('en')
+    expect(DEFAULT_LANGUAGE).toBe('zh-TW')
+    expect(readLanguage(storage)).toBe('zh-TW')
 
     storage.setItem(LANGUAGE_STORAGE_KEY, 'fr')
-    expect(readLanguage(storage)).toBe('en')
+    expect(readLanguage(storage)).toBe('zh-TW')
   })
 
   it('persists and restores Traditional Chinese', () => {
@@ -35,9 +37,16 @@ describe('i18n', () => {
     expect(readLanguage(storage)).toBe('zh-TW')
   })
 
+  it('persists English only after the user selects it', () => {
+    const storage = new MemoryStorage()
+    writeLanguage(storage, 'en')
+
+    expect(readLanguage(storage)).toBe('en')
+  })
+
   it('keeps language switching usable when storage is unavailable', () => {
-    expect(readLanguage({ getItem: () => { throw new Error('blocked') } })).toBe('en')
-    expect(() => writeLanguage({ setItem: () => { throw new Error('blocked') } }, 'zh-TW'))
+    expect(readLanguage({ getItem: () => { throw new Error('blocked') } })).toBe('zh-TW')
+    expect(() => writeLanguage({ setItem: () => { throw new Error('blocked') } }, 'en'))
       .not.toThrow()
   })
 

@@ -538,8 +538,8 @@ export default function App() {
               value={language}
               onChange={(event) => setLanguage(event.target.value as 'en' | 'zh-TW')}
             >
-              <option value="en">{t('language.english')}</option>
               <option value="zh-TW">{t('language.traditionalChinese')}</option>
+              <option value="en">{t('language.english')}</option>
             </select>
           </label>
           <a

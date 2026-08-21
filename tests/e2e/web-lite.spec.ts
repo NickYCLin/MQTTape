@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises'
 import { Buffer } from 'node:buffer'
 import { createServer } from 'node:http'
 import type { AddressInfo } from 'node:net'
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 import { Aedes } from 'aedes'
 import { generate, parser, type IPublishPacket } from 'mqtt-packet'
 import mqtt from 'mqtt'
@@ -11,6 +11,12 @@ import {
   DOWNLINK_HISTORY_STORAGE_KEY,
   type LoRaWanDownlinkHistoryFile
 } from '../../src/shared/lorawan-downlink-history'
+
+async function selectEnglish(page: Page): Promise<void> {
+  await page.getByLabel('介面語言').selectOption('en')
+  await expect(page.getByLabel('Interface language')).toHaveValue('en')
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en')
+}
 
 async function startWebSocketBroker() {
   const broker = await Aedes.createBroker()
@@ -78,37 +84,43 @@ const downlinkHistory = {
   ]
 } satisfies LoRaWanDownlinkHistoryFile
 
-test('Web Lite starts and persists the selected interface language', async ({ page }) => {
+test('Web Lite starts in Traditional Chinese and persists user-selected English', async ({
+  page
+}) => {
   await page.goto('/')
 
   await expect(page).toHaveTitle('MQTTape')
-  await expect(page.getByRole('heading', { name: 'Connection' })).toBeVisible()
-  await expect(page.getByRole('note')).toContainText(
-    'MQTT over Secure WebSocket · 8084 is a common Broker default · encrypted'
-  )
-  await expect(page.getByRole('note')).toContainText(
-    'Web Lite requires WS or WSS because browsers cannot open raw MQTT TCP sockets.'
-  )
-
-  await page.getByLabel('Protocol').selectOption('ws')
-  await expect(page.getByLabel('Port')).toHaveValue('8083')
-  await expect(page.getByRole('note')).toContainText(
-    'MQTT over WebSocket · 8083 is a common Broker default · unencrypted'
-  )
-
-  const language = page.getByLabel('Interface language')
-  await language.selectOption('zh-TW')
-  await expect(page.getByRole('heading', { name: '連線' })).toBeVisible()
-  await expect(page.getByRole('note')).toContainText('8083 是部分 Broker 的常見預設')
-
-  await page.reload()
+  await expect(page.locator('html')).toHaveAttribute('lang', 'zh-TW')
   await expect(page.getByLabel('介面語言')).toHaveValue('zh-TW')
   await expect(page.getByRole('heading', { name: '連線' })).toBeVisible()
-  await expect(page.getByRole('note')).toContainText('此連接埠只是起始建議值')
+  await expect(page.getByRole('note')).toContainText(
+    'MQTT over Secure WebSocket · 8084 是部分 Broker 的常見預設 · 加密'
+  )
+  await expect(page.getByRole('note')).toContainText(
+    '瀏覽器無法開啟原始 MQTT TCP Socket，因此 Web Lite 必須使用 WS 或 WSS。'
+  )
+
+  await page.getByLabel('通訊協定').selectOption('ws')
+  await expect(page.getByLabel('連接埠')).toHaveValue('8083')
+  await expect(page.getByRole('note')).toContainText(
+    'MQTT over WebSocket · 8083 是部分 Broker 的常見預設 · 未加密'
+  )
+
+  await page.getByLabel('介面語言').selectOption('en')
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en')
+  await expect(page.getByRole('heading', { name: 'Connection' })).toBeVisible()
+  await expect(page.getByRole('note')).toContainText('8083 is a common Broker default')
+
+  await page.reload()
+  await expect(page.getByLabel('Interface language')).toHaveValue('en')
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en')
+  await expect(page.getByRole('heading', { name: 'Connection' })).toBeVisible()
+  await expect(page.getByRole('note')).toContainText('This port is only a starting value')
 })
 
 test('Web Lite keeps multiple Broker workspaces isolated', async ({ page }) => {
   await page.goto('/')
+  await selectEnglish(page)
   const activeWorkspace = page.locator('.session-workspace:not([hidden])')
 
   await activeWorkspace.getByLabel('Profile name').fill('Primary Broker')
@@ -138,6 +150,7 @@ test('Web Lite keeps multiple Broker workspaces isolated', async ({ page }) => {
 
 test('Web Lite configures URL authentication without persisting secret values', async ({ page }) => {
   await page.goto('/')
+  await selectEnglish(page)
   await page.getByLabel('Profile name').fill('Query auth profile')
   await page.getByText('Advanced settings').click()
 
@@ -161,6 +174,7 @@ test('Web Lite keeps two live Broker connections active in parallel', async ({ p
 
   try {
     await page.goto('/')
+    await selectEnglish(page)
     const activeWorkspace = page.locator('.session-workspace:not([hidden])')
     await activeWorkspace.getByLabel('Profile name').fill('Live Broker A')
     await activeWorkspace.getByLabel('Protocol').selectOption('ws')
@@ -225,6 +239,7 @@ test('Web Lite keeps two live Broker connections active in parallel', async ({ p
 
 test('Web Lite configures and validates MQTT Last Will', async ({ page }) => {
   await page.goto('/')
+  await selectEnglish(page)
   await page.getByLabel('Protocol').selectOption('ws')
   await page.getByLabel('Host').fill('127.0.0.1')
   await page.getByLabel('Port').fill('1')
@@ -296,6 +311,7 @@ test('Web Lite inspects MQTT 5 publish properties in both languages', async ({ p
 
   try {
     await page.goto('/')
+    await selectEnglish(page)
     await page.getByLabel('Protocol').selectOption('ws')
     await page.getByLabel('Host').fill('127.0.0.1')
     await page.getByLabel('Port').fill(String(port))
@@ -414,6 +430,7 @@ test('Web Lite inspects MQTT 5 publish properties in both languages', async ({ p
 
 test('Downlink history survives reload, exports safely, and can be cleared', async ({ page }) => {
   await page.goto('/')
+  await selectEnglish(page)
   await page.evaluate(([key, history]) => {
     window.localStorage.setItem(key, history)
   }, [DOWNLINK_HISTORY_STORAGE_KEY, JSON.stringify(downlinkHistory)])

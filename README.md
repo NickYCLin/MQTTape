@@ -39,7 +39,7 @@ MQTTape 是一套可在桌面與瀏覽器使用的開源 MQTT 除錯工具。它
 - 重播期間可暫停、繼續或取消，並維持原始訊息順序
 - 桌面版 Broker 設定檔會以作業系統加密機制保存秘密
 - 桌面版支援自訂 CA 與 Client Certificate／Key 的 mTLS
-- 可切換英文與繁體中文介面，並在本機記住偏好
+- 預設使用繁體中文介面；使用者可自行切換成英文，並在本機記住偏好
 - 已安裝的 Windows 與支援的 Linux 套件可在背景檢查及下載更新
 - 提供 Windows 免安裝版，以及 Windows、macOS、Linux 安裝套件
 - 提供跟隨系統、Midnight、Tape、Magenta、高對比、Daylight 與 Paper 外觀主題
@@ -113,11 +113,23 @@ ChirpStack:      application/<application-id>/device/+/event/+
 
 匯出的 Downlink 歷史格式識別碼為 `mqttape-downlink-history`、版本為 `1`。它適合保存與檢查狀態事件，但不包含可重新發布的完整 Downlink Payload；需要無損重播時仍應使用 MQTTape 擷取檔。
 
-## 下載
+## 📥 下載與安裝 (Downloads)
 
-請從 [GitHub Releases](https://github.com/NickYCLin/MQTTape/releases/latest) 下載最新版桌面套件與 Checksum Manifest。Release 會分別提供 Windows、macOS、Linux 的 x64 與 ARM64 套件，檔名中的 `x64`／`arm64` 可用來選擇 CPU 架構。
+你可以直接前往 [GitHub Releases](https://github.com/NickYCLin/MQTTape/releases/latest) 取得最新發行版本的安裝檔、可攜式執行檔與 Checksum Manifest：
 
-Windows x64 使用者可選擇 `Setup` 安裝程式以使用應用程式自動更新，或選擇需要手動更新的 Portable 執行檔。ARM64 目前一律連到最新版手動下載頁，避免共用 x64 更新 metadata 時安裝到錯誤架構；後續建立獨立更新 Feed 後才會開啟 ARM64 自動更新。
+| 平台 | 支援架構 | 安裝包格式 | 更新機制 |
+|---|---|---|---|
+| **Windows** | x64 (Intel / AMD) | NSIS 安裝檔 (`Setup.exe`) / Portable 免安裝版 | 🟢 安裝版支援背景自動更新 / 免安裝版手動下載 |
+| **Windows** | ARM64 | NSIS 安裝檔 (`Setup.exe`) / Portable 免安裝版 | ⚪ 手動下載更新 |
+| **macOS** | Apple Silicon (M 系列) | DMG 映像檔 (`.dmg`) / ZIP 壓縮檔 | ⚪ 手動下載更新 |
+| **macOS** | Intel x64 | DMG 映像檔 (`.dmg`) / ZIP 壓縮檔 | ⚪ 手動下載更新 |
+| **Linux** | x64 (AMD64) | AppImage / Debian 套件 (`.deb`) | 🟢 支援背景自動更新 |
+| **Linux** | ARM64 (aarch64) | AppImage / Debian 套件 (`.deb`) | ⚪ 手動下載更新 |
+| **Web Lite** | 跨平台瀏覽器 | 靜態 Web 應用 ([線上使用](https://nickyclin.github.io/MQTTape/)) | 🟢 瀏覽器即時載入最新版 |
+
+> [!TIP]
+> 歡迎至 [Releases 列表](https://github.com/NickYCLin/MQTTape/releases) 下載各平台安裝檔或檢視 [更新日誌 (Changelog)](CHANGELOG.md)。
+> 維護者可參考 [Release 自動化與版本規則](docs/RELEASE_AUTOMATION.zh-TW.md)；依 SemVer 與 Conventional Commits 準備版本並建立 Tag 後，系統會自動打包發布。
 
 ## 程式碼簽章政策
 

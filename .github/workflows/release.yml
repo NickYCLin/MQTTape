@@ -84,6 +84,8 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Checkout
+        uses: actions/checkout@v7
       - name: Download packages
         uses: actions/download-artifact@v8
         with:
@@ -93,30 +95,64 @@ jobs:
       - name: Generate SHA-256 checksums
         working-directory: artifacts
         run: sha256sum * > SHA256SUMS.txt
+      - name: Prepare release notes
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          version="${RELEASE_TAG#v}"
+          if ! awk -v version="$version" '
+              index($0, "## [" version "]") == 1 { found = 1; next }
+              found && /^---$/ { exit }
+              found { print }
+              END { if (!found) exit 2 }
+            ' CHANGELOG.md | sed -e 's/^### /## /' -e 's/^\* /- /' > release-notes.md; then
+            echo "CHANGELOG.md 找不到 $RELEASE_TAG 的發布明細" >&2
+            exit 1
+          fi
+
+          if [[ ! -s release-notes.md ]]; then
+            echo "CHANGELOG.md 找不到 $RELEASE_TAG 的發布明細" >&2
+            exit 1
+          fi
+
+          summary="$(grep -m1 -E '^[*-] \*\*[^*]+\*\*[:：]?' release-notes.md | sed -E 's/^[*-] \*\*([^*]+)\*\*[:：]?.*$/\1/' || true)"
+          if [[ -z "$summary" ]]; then
+            echo "CHANGELOG.md 的 $RELEASE_TAG 缺少可作為標題的粗體重點" >&2
+            exit 1
+          fi
+          printf 'MQTTape %s - %s\n' "$RELEASE_TAG" "$summary" > release-title.txt
+
+          cat >> release-notes.md <<'EOF'
+
+          ## 📦 下載與更新
+
+          | 平台 | 架構 | 檔案格式 | 更新支援 |
+          |---|---|---|---|
+          | **Windows** | x64 | NSIS 安裝檔 (`Setup.exe`) / Portable 免安裝版 | 🟢 安裝版支援背景自動更新 |
+          | **Windows** | ARM64 | NSIS 安裝檔 (`Setup.exe`) / Portable 免安裝版 | ⚪ 手動下載更新 |
+          | **macOS** | Apple Silicon | DMG 映像檔 (`.dmg`) / ZIP 壓縮檔 | ⚪ 手動下載更新 |
+          | **macOS** | Intel x64 | DMG 映像檔 (`.dmg`) / ZIP 壓縮檔 | ⚪ 手動下載更新 |
+          | **Linux** | x64 (AMD64) | AppImage / Debian 套件 (`.deb`) | 🟢 支援背景自動更新 |
+          | **Linux** | ARM64 | AppImage / Debian 套件 (`.deb`) | ⚪ 手動下載更新 |
+          | **Web Lite** | 瀏覽器 | [線上即開即用](https://nickyclin.github.io/MQTTape/) | 🟢 瀏覽器載入已部署版本 |
+
+          ## 🛡️ 完整性與簽章狀態
+
+          - Release 內附 `SHA256SUMS.txt`；請計算下載檔案的 SHA-256，並與清單中的同名項目核對。
+          - Linux／macOS：`sha256sum <檔案名稱>`
+          - Windows PowerShell：`Get-FileHash <檔案名稱> -Algorithm SHA256`
+          - 在 SignPath 申請核准並完成簽章流程接線前，Windows 套件維持未簽章；macOS 套件目前也尚未加入 Apple Developer ID 簽名與公證。
+          - 詳細狀態請參閱 [SignPath 啟用手冊](https://github.com/NickYCLin/MQTTape/blob/main/docs/SIGNPATH.md) 與 [Release 自動化與版本規則](https://github.com/NickYCLin/MQTTape/blob/main/docs/RELEASE_AUTOMATION.zh-TW.md)。
+          EOF
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_NOTES: |
-            MQTTape releases include the latest inspected source, cross-platform
-            desktop packages, and a SHA-256 checksum manifest.
-
-            Installed Windows x64 builds and supported Linux x64 packages can
-            download future updates in the background. ARM64 packages, the
-            Windows portable build, and unsigned macOS builds continue to use
-            manual downloads.
-
-            ## Code signing policy
-
-            Free code signing provided by [SignPath.io](https://about.signpath.io/),
-            certificate by [SignPath Foundation](https://signpath.org/).
-            See the [project policy](https://github.com/NickYCLin/MQTTape#code-signing-policy)
-            for signing roles and privacy details. Windows packages published
-            before enrollment and signing-workflow activation remain unsigned.
-            macOS packages are currently unsigned.
         run: |
           gh release create "$GITHUB_REF_NAME" artifacts/* \
             --repo "$GITHUB_REPOSITORY" \
-            --title "MQTTape $GITHUB_REF_NAME" \
-            --notes "$RELEASE_NOTES" \
-            --generate-notes \
+            --title "$(cat release-title.txt)" \
+            --notes-file release-notes.md \
             --verify-tag
