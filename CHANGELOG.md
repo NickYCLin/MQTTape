@@ -1,195 +1,210 @@
-# Changelog
+# 更新日誌 (Changelog)
 
-All notable changes to MQTTape are documented in this file.
+本專案遵循語意化版本（Semantic Versioning）發布，所有更新內容均以繁體中文條列說明。
 
-## [0.12.0] - 2026-08-21
+---
 
-### Added
+## [0.12.0](https://github.com/NickYCLin/MQTTape/compare/v0.11.0...v0.12.0) (2026-08-21)
 
-- Native x64 and ARM64 release packages for Windows, macOS, and Linux using GitHub-hosted architecture-specific runners.
-- A SignPath activation and verification runbook for safely wiring Windows signing after the OSS application is approved.
-- Architecture-neutral CBOR packaging that uses the existing pure-JavaScript decoder without rebuilding or shipping the optional `cbor-extract` native accelerator.
-- Desktop WebSocket handshake authentication with HTTP Basic, Bearer tokens, and validated custom headers, plus URL query parameters in both desktop and Web Lite.
-- OS-encrypted desktop profile storage for WebSocket authentication values, Web Lite secret omission, and capture/status privacy guards.
-- Up to eight simultaneous, tabbed Broker sessions with isolated MQTT clients, subscriptions, captures, packet flows, replay state, and background unread counts.
-- Broker-scoped LoRaWAN downlink history plus live profile-list synchronization between open sessions.
-- MQTT Last Will configuration for UTF-8, Hex, and Base64 payloads, QoS, Retain, and MQTT 5 Will Delay, Message Expiry, Content Type, and Payload Format properties.
-- Encrypted desktop-profile storage for Last Will payloads, Web Lite payload omission, and capture-file privacy exclusion.
-- Protobuf schema-bundle import, explicit message-type selection, CSP-safe wire decoding, local schema persistence, unknown-field diagnostics, and type-preserving trees.
-- Automatic Sparkplug B topic recognition with the official Eclipse Tahu Payload schema, topic metadata, Metric summaries, and complete payload trees.
-- CBOR and CBOR Sequence payload inspection with Content-Type detection, guarded heuristic detection, type-preserving trees, and bounded previews.
-- Session-only QoS 0/1/2 packet-flow inspection with TX/RX direction, Packet ID, DUP retransmission, MQTT 5 Reason Code, duration, and pending-handshake diagnostics.
-- Local LoRaWAN downlink history that retains up to 1,000 parsed events across restarts without storing raw MQTT payloads or broker credentials.
-- Versioned downlink-history JSON export plus an in-app action to clear saved events.
-- Playwright UI smoke tests for Web Lite language and downlink-history flows plus the Electron preload bridge.
-- MQTT 5 Publish Properties capture and inspection in both the desktop app and Web Lite, including duplicate User Properties and binary Correlation Data.
-- Protocol-specific port guidance that distinguishes registered MQTT TCP ports from common Broker WebSocket defaults.
-- MQTT 5 Publish Properties editor and lossless replay for publish-safe metadata in both the desktop app and Web Lite.
-- MQTT 3.1.1 compatibility guards plus replay omission of connection-scoped Topic Alias and Broker-issued Subscription Identifier metadata.
+### 🚀 新增功能
+* **跨平台原生 x64 與 ARM64 封裝發布**：
+  - 針對 Windows、macOS (Apple Silicon) 與 Linux 提供 GitHub Actions 原生 Runner 編譯之 ARM64 獨立安裝包與可攜式二進位檔。
+  - 建立架構中立的 CBOR 打包機制，使用純 JavaScript 解碼核心，不強制依賴或打包原生加速器 `cbor-extract`。
+* **Protobuf 與 Sparkplug B 訊息解碼檢視器**：
+  - 支援匯入一個或多個 `.proto` Schema 定義檔並選擇目標 Message Type，以 CSP 安全的樹狀結構呈現已解碼欄位與未識別欄位診斷。
+  - 支援自動辨識 `spBv1.0` Sparkplug B 主題，內建 Eclipse Tahu 官方 Schema，自動解析 Topic Metadata、Metric 摘要指標與完整 Payload 階層樹。
+* **CBOR 與 CBOR Sequence 深度檢查器**：
+  - 支援依 MQTT 5 Content-Type 自動偵測與啟發式二進位特徵識別，保留原始資料型別並提供邊界預覽與樹狀節點展開。
+* **最多 8 組獨立隔離的 Broker 多工作階段 (Multi-Session Tabs)**：
+  - 支援最多 8 個分頁並行連線，各分頁具備獨立的 MQTT Client、訂閱清單、封包時間軸、QoS 流程與重播狀態。
+  - 背景分頁支援未讀訊息計數，並能在分頁間即時同步連線設定檔。
+* **QoS 0/1/2 控制封包流程即時追蹤 (Packet Flow Inspector)**：
+  - 支援以工作階段為單位的封包流程圖，標示 TX/RX 方向、Packet ID、DUP 重傳旗標、MQTT 5 Reason Code、傳輸耗時與握手等待狀態診斷。
+* **WebSocket 進階認證與自訂握手 Header**：
+  - 桌面版支援 HTTP Basic 認證、Bearer Token 與最多 32 組自訂握手 Header；桌面版與 Web Lite 皆支援最多 32 組 URL Query Parameters。
+  - 敏感認證秘密透過作業系統安全儲存區（Electron `safeStorage`）加密保護，Web Lite 刻意略過秘密值以防洩漏。
+* **MQTT Last Will (遺囑訊息) 完整配置**：
+  - 支援 UTF-8、Hex、Base64 格式的 Will Payload，支援 QoS 0/1/2、Retain 旗標。
+  - 支援 MQTT 5.0 的 Will Delay Interval、Message Expiry Interval、Content Type 與 Payload Format Indicator 屬性。
+  - 桌面版 Will Payload 納入作業系統加密保護，且於擷取匯出檔中自動排除以維護隱私。
+* **LoRaWAN Downlink 歷史追蹤與版本化 JSON 匯出**：
+  - 支援依 Broker 或設定檔隔離記錄最多 1,000 筆已解析的 Downlink 事件，支援跨程式重啟持續追蹤。
+  - 提供版本化 JSON 歷史記錄匯出（`mqttape-downlink-history` v1）與一鍵清除本機事件功能。
+* **MQTT 5 Publish Properties 擷取、編輯與無損重播**：
+  - 支援擷取與檢視 Content Type、Message Expiry、Correlation Data、可重複 User Properties 等中繼資料。
+  - 具備 MQTT 3.1.1 相容防呆與重播安全過濾（自動略過連線層級之 Topic Alias 與 Broker 指派之 Subscription Identifier）。
+* **SignPath 程式碼簽章流程與驗收手冊**：
+  - 建立 `docs/SIGNPATH.md` 規範，為後續 Windows 開源簽章核准後提供標準化部署與驗收指南。
 
-### Changed
+### 🛠️ 問題修正與優化
+* **工作階段生命週期與記憶體釋放**：
+  - 修正連線建立中關閉分頁時殘留隱藏 MQTT Client 或永久佔用工作階段插槽的問題。
+  - 修正連線失敗（缺少 TLS 憑證、非 TLS 協定使用憑證、Web Lite 不合法 Last Will）停留在「連線中」的狀態異常。
+  - 退出桌面 App 時主動等待 MQTT `DISCONNECT` 封包發送完成，避免 Broker 誤判異常中斷而觸發發布所有分頁的 Last Will。
+  - 修正孤立 Client 錯誤訊息污染活躍分頁狀態的問題。
+* **訊息緩衝區與渲染防護**：
+  - 訊息緩衝區新增保留 Payload 總位元組上限機制，防止大量大型封包耗盡渲染程序記憶體。
+  - 修正背景分頁在 5,000 則緩衝區滿載後停止累加未讀角標的問題。
+  - 避免訊息重新渲染時非預期連帶觸發其他隱藏分頁工作區的無效計算。
+* **LoRaWAN 歷史與儲存隔離**：
+  - 輸入 Broker 主機名稱時不再逐鍵建立暫存歷史項目，統一依連線端點或選用設定檔歸戶。
+  - 修正清除 Downlink 歷史後切換檢視或重啟 App 仍可能被重新匯入的問題。
+  - 修正兩個連線至同一 Broker 的分頁互相覆寫本機 Downlink 事件的競態條件。
+* **介面焦點與操作體驗**：
+  - 修正刪除 WebSocket Header 或 Query 參數列時鍵盤焦點與輸入狀態跳移至下方欄位的問題。
+  - 修正單一檢視匯入 Protobuf Schema 時被另一個未重新整理的檢視覆寫的狀態衝突。
+  - 重播完成時狀態標籤改以綠色成功徽章顯示。
+  - Apple Silicon macOS 於介面清楚標示未簽章手動更新原因，取代原先易誤解的架構不相容提示。
 
-- ARM64 packages use explicit manual downloads until per-architecture updater metadata is available, preventing cross-architecture automatic updates.
+---
 
-### Fixed
+## [0.11.0](https://github.com/NickYCLin/MQTTape/compare/v0.10.0...v0.11.0) (2026-08-17)
 
-- Closing a session tab while its connection was still starting no longer leaks a hidden MQTT client or permanently occupies one of the eight session slots.
-- Failed connection attempts — missing TLS files, TLS files on a non-TLS protocol, or an invalid Last Will in Web Lite — now end in an error state instead of leaving the session stuck on "Connecting".
-- An orphaned client from a failed or superseded connection no longer pushes its errors into the session's live status.
-- Quitting the desktop app now waits for MQTT DISCONNECT packets to flush, so brokers no longer publish every session's Last Will on normal exit.
-- Unread tab badges keep counting after a background session's 5,000-message buffer fills.
-- The message buffer now also caps retained payload bytes, so a stream of large payloads cannot exhaust renderer memory.
-- Typing a broker host no longer forks the LoRaWAN downlink history into per-keystroke storage entries; the history now follows the connected endpoint or the selected profile.
-- Clearing the downlink history now persists across view switches and app restarts instead of silently re-importing the cleared events.
-- Two sessions watching the same broker no longer overwrite each other's stored downlink events.
-- Removing a WebSocket header or query-parameter row no longer moves keyboard focus and input state onto the row below it.
-- Importing a Protobuf schema in one open inspector is no longer wiped when another inspector with a stale list saves.
-- A completed replay now shows a green state badge instead of a neutral one.
-- Apple Silicon macOS builds now explain manual updates with the unsigned-macOS reason instead of claiming the architecture is unsupported.
-- Message re-renders no longer cascade through every open session's hidden workspace.
+### 🚀 新增功能
+* **全新外觀色彩主題系統**：
+  - 提供 Midnight、Tape、Magenta、高對比、Daylight、Paper 六種原創主題與「跟隨系統」選項。
+  - 頂端導覽列提供即時色票切換器，依色彩配置分組並於各裝置持久化偏好設定。
+* **LoRaWAN Downlink 狀態追蹤**：
+  - 支援 The Things Stack 與 ChirpStack 的 Downlink 提出、排隊、送出、確認與失敗生命週期追蹤。
+  - 支援 The Things Stack 唯一 `correlation_ids` 與 ChirpStack `queueItemId` 精確事件關聯。
 
-## [0.11.0] - 2026-08-17
+### 🛠️ 問題修正與優化
+* **Design Token 設計系統**：
+  - 建立統一的 Design Tokens（涵蓋色彩、排版、間距與圓角標準）。
+  - 基底字級提升為 11–20 px，等寬字體保留專用於 MQTT 原始資料展示。
+  - 以共用元件層全面重構統計卡片、工作階段工具列、訊息列與對話框。
+* **品牌識別全面重繪**：
+  - 重新設計卡帶 App 圖示、Favicon 與品牌標誌，強化錄音卡帶細節並配搭主題色系。
+* **操作圖示精準校正**：
+  - 校正重播、中斷連線、檢查更新與 LoRaWAN 建立器之圖示語意，避免借用無關圖示。
+* **繁體中文說明文件**：
+  - 全篇以繁體中文重寫專案 README，詳細記錄 Downlink 狀態追蹤與訂閱邊界。
 
-### Added
+---
 
-- Six appearance themes — Midnight, Tape, Magenta, High contrast, Daylight, and Paper — plus a follow-system option.
-- Top-bar theme picker with colour swatches, grouped by colour scheme, persisted per device.
-- Session-derived LoRaWAN downlink status tracking for The Things Stack and ChirpStack.
-- Exact The Things Stack correlation IDs plus ChirpStack `queueItemId` event linking.
+## [0.10.0](https://github.com/NickYCLin/MQTTape/compare/v0.9.0...v0.10.0) (2026-08-17)
 
-### Changed
+### 🚀 新增功能
+* **引導式 LoRaWAN Downlink 建立器**：
+  - 支援 The Things Stack 與 ChirpStack 官方標準 MQTT 格式。
+  - 支援 UTF-8 文字、Hex 位元組、Base64 與已解碼 JSON，提供即時 Topic 與 JSON Envelope 預覽。
+  - 內建平台特定識別碼、FPort 範圍校驗與強制非 Retained 發布保護機制。
 
-- Rebuilt the interface on a single design-token system covering colour, type, spacing, and radius.
-- Raised the base type scale from 8–10 px to 11–20 px and reserved the monospace face for MQTT data.
-- Replaced the statistics cards, session toolbar, message rows, and dialogs with a shared component layer.
-- Redrew the application icon, favicon, and brand mark so the cassette reads as a cassette rather than a face, and matched them to the accent palette.
-- Corrected misleading action icons: replay, disconnect, update checks, and the LoRaWAN downlink builder no longer borrow icons from unrelated actions.
-- Rewrote the project README in Traditional Chinese and documented downlink feedback subscriptions and correlation limits.
+---
 
-## [0.10.0] - 2026-08-17
+## [0.9.0](https://github.com/NickYCLin/MQTTape/compare/v0.8.0...v0.9.0) (2026-08-17)
 
-### Added
+### 🚀 新增功能
+* **自動 LoRaWAN Uplink 辨識**：
+  - 自動識別 The Things Stack 與 ChirpStack JSON 事件。
+  - 即時解析並呈現裝置識別、訊框計數、頻率、Data Rate、RSSI 與 SNR 摘要。
+  - 內嵌 Base64 訊框預覽，並支援一鍵無損下載原始二進位訊框檔。
 
-- Guided The Things Stack and ChirpStack LoRaWAN MQTT downlink builder.
-- UTF-8, Hex, Base64, and decoded-JSON input with exact topic and envelope previews.
-- Platform-aware identifier, FPort, payload, and non-retained publish safeguards.
+---
 
-## [0.9.0] - 2026-08-17
+## [0.8.0](https://github.com/NickYCLin/MQTTape/compare/v0.7.0...v0.8.0) (2026-08-17)
 
-### Added
+### 🚀 新增功能
+* **桌面版背景自動更新機制**：
+  - 整合 `electron-updater`，支援 Windows x64 與 Linux x64 安裝版在背景檢查、下載與一鍵重啟更新。
+  - 自動產出並上傳 GitHub Release 差分更新中繼資料（`latest.yml` / `latest-linux.yml`）。
 
-- Automatic LoRaWAN uplink recognition for The Things Stack and ChirpStack JSON events.
-- Device, application, frame, data-rate, frequency, RSSI, and SNR inspection.
-- Embedded Base64 frame previews and lossless raw LoRaWAN frame downloads.
+---
 
-## [0.8.0] - 2026-08-17
+## [0.7.0](https://github.com/NickYCLin/MQTTape/compare/v0.6.0...v0.7.0) (2026-08-17)
 
-### Added
+### 🚀 新增功能
+* **繁體中文與英文多語系即時切換**：
+  - 支援執行期在繁體中文與英文介面間自由切換，並於本機記住語言偏好。
 
-- Background update checks, downloads, progress, and restart-to-install controls for supported desktop packages.
-- GitHub Release metadata and differential-update artifacts for `electron-updater`.
+---
 
-## [0.7.0] - 2026-08-17
+## [0.6.0](https://github.com/NickYCLin/MQTTape/compare/v0.5.0...v0.6.0) (2026-08-17)
 
-### Added
+### 🚀 新增功能
+* **可重複使用的重播預設設定**：
+  - 支援保存訊息方向、播放倍速與主題前綴重對應（Topic Remapping）預設方案。
 
-- Runtime interface switching between English and Traditional Chinese with a persisted local preference.
+---
 
-## [0.6.0] - 2026-08-17
+## [0.5.0](https://github.com/NickYCLin/MQTTape/compare/v0.4.0...v0.5.0) (2026-08-17)
 
-### Added
+### 🚀 新增功能
+* **彈性擷取裁切與匯出預覽**：
+  - 支援依訊息方向、主題/Payload 關鍵字與時間範圍進行精確裁切。
+  - 提供即時匯出摘要預覽（包含訊息筆數、Payload 總量、Retained 計數與範例主題）。
 
-- Reusable local replay presets for message directions, speed, and topic-prefix remapping.
+### 🛠️ 問題修正與優化
+* **Web Lite 開發模式相容性**：
+  - 修正 Web Lite 開發模式於保留生產環境 CSP 安全限制下的 Vite 樣式載入問題。
+* **開發工具鏈更新**：
+  - 更新 Electron、測試、Lint 與 TypeScript 型別工具，並將 Dependabot 重大版本更新分開提交以便逐項驗證相容性。
 
-## [0.5.0] - 2026-08-17
+---
 
-### Added
+## [0.4.0](https://github.com/NickYCLin/MQTTape/compare/v0.3.0...v0.4.0) (2026-08-15)
 
-- Capture trimming by message direction, topic or payload query, and inclusive time range.
-- Export previews with selected message counts, payload size, retained counts, and sample topics.
+### 🚀 新增功能
+* **Payload 智慧型別判定**：
+  - 自動分類空白、JSON、文字與二進位 Payload。
+  - 時間軸提供文字、格式化 JSON、Hex Offset / ASCII 多重視圖。
+  - 支援依主題與時間戳命名無損下載原始二進位資料。
+  - 限制 256 KB 畫面預覽以維持介面流暢度，同時確保下載資料之完整性。
 
-### Changed
+### 🛠️ 問題修正與優化
+* **二進位資料顯示與驗證**：
+  - 二進位時間軸改用明確提示取代錯誤解碼文字；擷取匯入會拒絕無效 Base64 與不一致的 Payload 位元組大小。
+* **測試與發布流程**：
+  - 新增 TCP／WebSocket 二進位資料完整性測試，GitHub Actions 升級至 Node 24 相容版本，並修正 Release 說明殘留舊版本內容的問題。
 
-- Updated the Electron, test, lint, and TypeScript type-definition toolchain.
-- Major Dependabot updates now remain isolated for explicit compatibility review.
+---
 
-### Fixed
+## [0.3.0](https://github.com/NickYCLin/MQTTape/compare/v0.2.0...v0.3.0) (2026-08-14)
 
-- Web Lite development mode now loads Vite-injected styles without weakening production CSP.
+### 🚀 新增功能
+* **工作階段 Topic 樹狀資源瀏覽器**：
+  - 階層化瀏覽所有接收主題，即時統計雙向流量與最新 Payload。
+* **Retained 訊息狀態快照**：
+  - 支援 Retained 訊息快照檢視與空白墓碑（Tombstone）辨識。
+* **重播主題前綴置換 (Topic Remapping)**：
+  - 提供置換前後對比預覽與受影響訊息計數。
 
-## [0.4.0] - 2026-08-15
+### 🛠️ 問題修正與優化
+* **發布 Topic 安全檢查**：
+  - 一般發布與重播共用相同的 MQTT Topic 驗證；若重對應後的目的地不合法，會在傳送任何訊息前先行阻擋。
+* **自動化測試補強**：
+  - 新增 Topic 樹、重對應、Retained 刪除與真實 Broker 整合測試。
 
-### Added
+---
 
-- Automatic empty, JSON, text, and binary payload classification.
-- Text, formatted JSON, and offset/ASCII Hex views in the message timeline.
-- Lossless raw-payload downloads with topic- and timestamp-derived filenames.
-- 256 KB display limits for large payloads while preserving complete downloads.
-- TCP and WebSocket integration coverage for binary payload byte preservation.
-- Weekly Dependabot updates for GitHub Actions.
+## [0.2.0](https://github.com/NickYCLin/MQTTape/compare/v0.1.0...v0.2.0) (2026-08-14)
 
-### Changed
+### 🚀 新增功能
+* **擷取預覽與重播控制**：
+  - 支援雙向訊息過濾、Retained 警示、倍速播放、暫停、繼續與取消。
+* **作業系統層級加密設定檔**：
+  - 桌面版使用系統安全儲存保護連線帳密，Web Lite 僅保存非機密設定。
+* **自訂 CA 與 mTLS 雙向認證**：
+  - 桌面版支援自訂根憑證與用戶端證書/金鑰對。
+* **Web Lite 自動部署**：
+  - GitHub Actions 自動部署網頁版至 GitHub Pages。
+* **跨平台 macOS 封裝**：
+  - 支援 Intel 與 Apple Silicon macOS 安裝檔與 SHA-256 雜湊清單。
 
-- Binary timeline previews now use a clear placeholder instead of decoded noise.
-- Capture validation rejects malformed Base64 and mismatched payload byte sizes.
-- GitHub workflows now use Node 24-based action majors for CI, Pages, and releases.
-- Release notes no longer contain version-specific text from an older release.
+### 🛠️ 問題修正與優化
+* **憑證與機密保護**：
+  - 限制 TLS 檔案只能存取經 MQTTape 選取或受信任設定檔引用的路徑；匯出擷取檔時自動剝除密碼、私鑰密語與本機 TLS 路徑。
+* **明文儲存防護**：
+  - 作業系統加密功能不可用時，不會將連線機密以明文寫入磁碟。
+* **通訊協定測試補強**：
+  - 新增 MQTT 5、WebSocket、QoS 2、Retained、取消訂閱與重新連線測試。
 
-## [0.3.0] - 2026-08-14
+---
 
-### Added
+## [0.1.0](https://github.com/NickYCLin/MQTTape/releases/tag/v0.1.0) (2026-08-14)
 
-- Session-derived Topic Explorer with hierarchical topic navigation.
-- Incoming/outgoing traffic counts, latest payloads, and natural topic sorting.
-- Retained-value snapshots with empty retained-message tombstone handling.
-- Replay topic-prefix remapping with before/after previews and changed-message counts.
-- Shared MQTT publish-topic validation for normal publishes and replay plans.
-- Unit and real-broker coverage for topic trees, remapping, and retained deletion.
-
-### Changed
-
-- Topic rows and retained cards can open the corresponding filtered timeline.
-- Replay blocks invalid remapped destinations before publishing any message.
-
-## [0.2.0] - 2026-08-14
-
-### Added
-
-- Capture preview with incoming/outgoing selection and retained-message warnings.
-- Replay speed controls plus pause, resume, cancel, and live progress.
-- Saved desktop broker profiles with operating-system-backed secret encryption.
-- Non-secret Web Lite profiles stored locally in the browser.
-- Desktop custom CA and mTLS client certificate/private-key selection.
-- MQTT 5, WebSocket, QoS 2, retained-message, unsubscribe, and reconnect tests.
-- Automated GitHub Pages deployment for Web Lite.
-- Intel and Apple Silicon macOS release packages.
-- SHA-256 checksum files for GitHub Release assets.
-
-### Security
-
-- TLS file access is restricted to files selected through MQTTape or trusted profiles.
-- Capture exports remove passwords, private-key passphrases, and TLS file paths.
-- Secrets are never written as plaintext when operating-system encryption is unavailable.
-
-## [0.1.0] - 2026-08-14
-
-### Added
-
-- Initial Electron and Web Lite MQTT client.
-- TCP, TLS, WebSocket, MQTT 3.1.1/5.0, QoS 0/1/2, and retained publishing.
-- Searchable message timeline, JSON formatting, capture export, and replay.
-- Cross-platform packaging, CI, and automated GitHub Releases.
-
-[Unreleased]: https://github.com/NickYCLin/MQTTape/compare/v0.12.0...HEAD
-[0.12.0]: https://github.com/NickYCLin/MQTTape/compare/v0.11.0...v0.12.0
-[0.11.0]: https://github.com/NickYCLin/MQTTape/compare/v0.10.0...v0.11.0
-[0.10.0]: https://github.com/NickYCLin/MQTTape/compare/v0.9.0...v0.10.0
-[0.9.0]: https://github.com/NickYCLin/MQTTape/compare/v0.8.0...v0.9.0
-[0.8.0]: https://github.com/NickYCLin/MQTTape/compare/v0.7.0...v0.8.0
-[0.7.0]: https://github.com/NickYCLin/MQTTape/compare/v0.6.0...v0.7.0
-[0.6.0]: https://github.com/NickYCLin/MQTTape/compare/v0.5.0...v0.6.0
-[0.5.0]: https://github.com/NickYCLin/MQTTape/compare/v0.4.0...v0.5.0
-[0.4.0]: https://github.com/NickYCLin/MQTTape/compare/v0.3.0...v0.4.0
-[0.3.0]: https://github.com/NickYCLin/MQTTape/compare/v0.2.0...v0.3.0
-[0.2.0]: https://github.com/NickYCLin/MQTTape/compare/v0.1.0...v0.2.0
-[0.1.0]: https://github.com/NickYCLin/MQTTape/releases/tag/v0.1.0
+### 🚀 新增功能
+* **初始版本發布**：
+  - MQTTape 初始版本（Electron 桌面版與 Web Lite 網頁版）。
+  - 支援 TCP、TLS、WebSocket 連線，支援 MQTT 3.1.1 / 5.0、QoS 0/1/2 與 Retained 訊息發布。
+  - 提供可搜尋之訊息時間軸、JSON 格式化、流量擷取匯出與重播機制。
