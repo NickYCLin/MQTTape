@@ -47,6 +47,13 @@ function mqttServiceFor(sessionId: MqttSessionId): MqttService {
   return service
 }
 
+// Only the connect handler may create a session slot; every other call must not
+// resurrect a session the renderer already destroyed.
+function existingMqttService(sessionId: MqttSessionId): MqttService | undefined {
+  assertSessionId(sessionId)
+  return mqttServices.get(sessionId)
+}
+
 async function destroyMqttSession(sessionId: MqttSessionId): Promise<void> {
   assertSessionId(sessionId)
   const service = mqttServices.get(sessionId)
@@ -78,11 +85,17 @@ function registerIpcHandlers(profileStore: ProfileStore, updater: UpdateService)
     sessionId: MqttSessionId,
     config: ConnectionConfig
   ) => {
+    // Register the slot before any await so a destroy-session arriving during
+    // the trusted-path check can find and tear it down.
+    const service = mqttServiceFor(sessionId)
     await assertTrustedTlsPaths(config, profileStore)
-    return mqttServiceFor(sessionId).connect(config)
+    if (mqttServices.get(sessionId) !== service) {
+      throw new Error('The MQTT session was closed before the connection started.')
+    }
+    return service.connect(config)
   })
   ipcMain.handle('mqttape:disconnect', (_event, sessionId: MqttSessionId) =>
-    mqttServiceFor(sessionId).disconnect()
+    existingMqttService(sessionId)?.disconnect()
   )
   ipcMain.handle('mqttape:destroy-session', (_event, sessionId: MqttSessionId) =>
     destroyMqttSession(sessionId)
@@ -91,19 +104,23 @@ function registerIpcHandlers(profileStore: ProfileStore, updater: UpdateService)
     _event,
     sessionId: MqttSessionId,
     request: SubscribeRequest
-  ) =>
-    mqttServiceFor(sessionId).subscribe(request)
-  )
+  ) => {
+    const service = existingMqttService(sessionId)
+    if (!service) throw new Error('Connect to a broker first.')
+    return service.subscribe(request)
+  })
   ipcMain.handle('mqttape:unsubscribe', (_event, sessionId: MqttSessionId, topic: string) =>
-    mqttServiceFor(sessionId).unsubscribe(topic)
+    existingMqttService(sessionId)?.unsubscribe(topic)
   )
   ipcMain.handle('mqttape:publish', (
     _event,
     sessionId: MqttSessionId,
     request: PublishRequest
-  ) =>
-    mqttServiceFor(sessionId).publish(request)
-  )
+  ) => {
+    const service = existingMqttService(sessionId)
+    if (!service) throw new Error('Connect to a broker first.')
+    return service.publish(request)
+  })
   ipcMain.handle('mqttape:save-capture', async (_event, capture: CaptureFile) => {
     const result = await dialog.showSaveDialog(mainWindow!, {
       title: 'Export MQTTape capture',
@@ -258,8 +275,11 @@ if (!hasSingleInstanceLock) {
 }
 
 app.on('window-all-closed', () => {
-  void disconnectAllMqttSessions()
-  if (process.platform !== 'darwin') app.quit()
+  // Let every client flush its DISCONNECT packet before quitting; killing the
+  // sockets abruptly would make brokers publish the sessions' Last Will.
+  void disconnectAllMqttSessions().finally(() => {
+    if (process.platform !== 'darwin') app.quit()
+  })
 })
 
 app.on('before-quit', () => updateService?.dispose())

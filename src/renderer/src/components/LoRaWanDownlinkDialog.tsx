@@ -148,7 +148,9 @@ export function LoRaWanDownlinkDialog({
               <input
                 className="mono"
                 value={applicationId}
-                placeholder={provider === 'the-things-stack' ? 'field-station' : 'Application UUID'}
+                placeholder={provider === 'the-things-stack'
+                  ? 'field-station'
+                  : t('lorawan.downlink.applicationUuidPlaceholder')}
                 spellCheck={false}
                 onChange={(event) => setApplicationId(event.target.value)}
               />

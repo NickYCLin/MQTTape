@@ -546,6 +546,7 @@ input[type='checkbox'] {
 .tag.state-running { color: var(--in); border-color: color-mix(in srgb, var(--in) 34%, transparent); }
 .tag.state-paused { color: var(--warning); border-color: color-mix(in srgb, var(--warning) 34%, transparent); }
 .tag.state-cancelled { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 34%, transparent); }
+.tag.state-completed { color: var(--in); border-color: color-mix(in srgb, var(--in) 34%, transparent); }
 .tag.warn { color: var(--warning); border-color: color-mix(in srgb, var(--warning) 34%, transparent); background: var(--warning-soft); }
 
 /* ===== Segmented control =============================================== */

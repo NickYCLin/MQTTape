@@ -117,10 +117,21 @@ export class MqttController {
     if (webSocketError) throw new Error(webSocketError)
 
     await this.disconnect()
+    // Validate the Last Will before reporting "connecting": a thrown error after
+    // that status would leave the session stuck with no way to retry.
+    const will = mqttLastWillOptions(config.will, config.mqttVersion)
     this.emitStatus({ state: 'connecting', detail: brokerEndpoint(config) })
 
-    const { default: mqtt } = await import('mqtt')
-    const will = mqttLastWillOptions(config.will, config.mqttVersion)
+    let mqtt: typeof import('mqtt').default
+    try {
+      mqtt = (await import('mqtt')).default
+    } catch (error) {
+      this.emitStatus({
+        state: 'error',
+        detail: error instanceof Error ? error.message : String(error)
+      })
+      throw error
+    }
     const client = mqtt.connect(brokerUrl(config), {
       clientId: config.clientId || undefined,
       username: config.username || undefined,

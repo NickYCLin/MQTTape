@@ -1,4 +1,4 @@
-import { useMemo, useState, type ChangeEvent } from 'react'
+import { useEffect, useMemo, useState, type ChangeEvent } from 'react'
 import {
   MAX_PROTOBUF_SCHEMA_FILES,
   MAX_STORED_PROTOBUF_SCHEMAS,
@@ -27,13 +27,26 @@ function schemaIdentifier(): string {
   return globalThis.crypto?.randomUUID?.() ?? `schema-${Date.now()}-${Math.random().toString(36).slice(2)}`
 }
 
+// Several inspectors can be open at once (one per expanded message); each
+// persist replaces the whole stored list, so instances must tell each other
+// to re-read or a stale instance wipes the others' imports.
+const SCHEMAS_UPDATED_EVENT = 'mqttape:protobuf-schemas-updated'
+
 export function ProtobufInspector({ payloadBase64, explicit }: ProtobufInspectorProps) {
-  const { t, formatNumber } = useI18n()
+  const { t, translateMessage, formatNumber } = useI18n()
   const [schemas, setSchemas] = useState<StoredProtobufSchema[]>(() =>
     readProtobufSchemas(window.localStorage)
   )
   const [selectedSchemaId, setSelectedSchemaId] = useState(() => schemas[0]?.id ?? '')
   const [schemaError, setSchemaError] = useState<string>()
+
+  useEffect(() => {
+    const handleSchemasUpdated = (): void => {
+      setSchemas(readProtobufSchemas(window.localStorage))
+    }
+    window.addEventListener(SCHEMAS_UPDATED_EVENT, handleSchemasUpdated)
+    return () => window.removeEventListener(SCHEMAS_UPDATED_EVENT, handleSchemasUpdated)
+  }, [])
   const selectedSchema = schemas.find((schema) => schema.id === selectedSchemaId) ?? schemas[0]
   const parsed = useMemo(() => {
     if (!selectedSchema) return undefined
@@ -57,6 +70,7 @@ export function ProtobufInspector({ payloadBase64, explicit }: ProtobufInspector
       writeProtobufSchemas(window.localStorage, next)
       setSchemas(next)
       setSchemaError(undefined)
+      window.dispatchEvent(new Event(SCHEMAS_UPDATED_EVENT))
       return true
     } catch (reason) {
       setSchemaError(reason instanceof Error ? reason.message : String(reason))
@@ -172,7 +186,11 @@ export function ProtobufInspector({ payloadBase64, explicit }: ProtobufInspector
       </div>
 
       <p className="note protobuf-privacy">{t('payload.protobufPrivacy')}</p>
-      {schemaError && <div className="structured-payload-error" role="alert"><code>{schemaError}</code></div>}
+      {schemaError && (
+        <div className="structured-payload-error" role="alert">
+          <code>{translateMessage(schemaError)}</code>
+        </div>
+      )}
       {parsed instanceof Error && (
         <div className="structured-payload-error" role="alert"><code>{parsed.message}</code></div>
       )}

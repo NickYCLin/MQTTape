@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
 import { ConnectionPanel } from './components/ConnectionPanel'
 import {
   DownloadIcon,
@@ -75,7 +75,7 @@ interface BrokerSessionSummary {
   config: ConnectionConfig
   status: StatusEvent
   isDesktop: boolean
-  messageCount: number
+  totalMessageCount: number
 }
 
 interface BrokerSessionTab {
@@ -94,16 +94,15 @@ function createSessionId(): string {
     .replace(/-/g, '_')
 }
 
-function downlinkHistoryNamespace(
-  selectedProfileId: string,
-  config: ConnectionConfig
-): string {
-  if (selectedProfileId) return `profile:${selectedProfileId}`
+function downlinkEndpointNamespace(config: ConnectionConfig): string {
   if (!config.host.trim()) return ''
   return `endpoint:${config.protocol}://${config.host.trim().toLocaleLowerCase()}:${config.port}${config.path}`
 }
 
-function BrokerWorkspace({ sessionId, onSummary }: BrokerWorkspaceProps) {
+const BrokerWorkspace = memo(function BrokerWorkspace({
+  sessionId,
+  onSummary
+}: BrokerWorkspaceProps) {
   const { t, translateMessage, formatNumber } = useI18n()
   const session = useMqttSession(sessionId)
   const [query, setQuery] = useState('')
@@ -117,10 +116,14 @@ function BrokerWorkspace({ sessionId, onSummary }: BrokerWorkspaceProps) {
     () => filterMessages(session.messages, query),
     [query, session.messages]
   )
-  const downlinkStorageNamespace = useMemo(
-    () => downlinkHistoryNamespace(session.selectedProfileId, session.config),
-    [session.config, session.selectedProfileId]
-  )
+  // Deriving the endpoint namespace from the live config would remount the
+  // tracker (and fork its stored history) on every keystroke in the host
+  // field, so it follows the config that actually connected.
+  const downlinkStorageNamespace = session.selectedProfileId
+    ? `profile:${session.selectedProfileId}`
+    : session.lastConnectedConfig
+      ? downlinkEndpointNamespace(session.lastConnectedConfig)
+      : ''
 
   useEffect(() => {
     onSummary({
@@ -128,9 +131,9 @@ function BrokerWorkspace({ sessionId, onSummary }: BrokerWorkspaceProps) {
       config: session.config,
       status: session.status,
       isDesktop: session.isDesktop,
-      messageCount: session.messages.length
+      totalMessageCount: session.totalMessageCount
     })
-  }, [onSummary, session.config, session.isDesktop, session.messages.length, session.status, sessionId])
+  }, [onSummary, session.config, session.isDesktop, session.totalMessageCount, session.status, sessionId])
 
   const saveCapture = async (capture: CaptureFile): Promise<boolean> => {
     try {
@@ -423,7 +426,7 @@ function BrokerWorkspace({ sessionId, onSummary }: BrokerWorkspaceProps) {
       )}
     </>
   )
-}
+})
 
 export default function App() {
   const { language, setLanguage, t, formatNumber } = useI18n()
@@ -437,18 +440,30 @@ export default function App() {
 
   const handleSummary = useCallback((summary: BrokerSessionSummary): void => {
     setSummaries((current) => {
-      if (current[summary.id] === summary) return current
+      const previous = current[summary.id]
+      if (
+        previous &&
+        previous.config === summary.config &&
+        previous.status === summary.status &&
+        previous.isDesktop === summary.isDesktop &&
+        previous.totalMessageCount === summary.totalMessageCount
+      ) {
+        return current
+      }
       return { ...current, [summary.id]: summary }
     })
-    setSessions((current) => current.map((tab) => {
-      if (tab.id !== summary.id) return tab
-      const addedMessages = Math.max(0, summary.messageCount - tab.lastMessageCount)
-      return {
-        ...tab,
-        unread: summary.id === activeSessionId ? 0 : tab.unread + addedMessages,
-        lastMessageCount: summary.messageCount
-      }
-    }))
+    setSessions((current) => {
+      let changed = false
+      const next = current.map((tab) => {
+        if (tab.id !== summary.id) return tab
+        const addedMessages = Math.max(0, summary.totalMessageCount - tab.lastMessageCount)
+        const unread = summary.id === activeSessionId ? 0 : tab.unread + addedMessages
+        if (unread === tab.unread && tab.lastMessageCount === summary.totalMessageCount) return tab
+        changed = true
+        return { ...tab, unread, lastMessageCount: summary.totalMessageCount }
+      })
+      return changed ? next : current
+    })
   }, [activeSessionId])
 
   const selectSession = (sessionId: string): void => {

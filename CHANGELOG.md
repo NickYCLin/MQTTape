@@ -31,6 +31,23 @@ All notable changes to MQTTape are documented in this file.
 
 - ARM64 packages use explicit manual downloads until per-architecture updater metadata is available, preventing cross-architecture automatic updates.
 
+### Fixed
+
+- Closing a session tab while its connection was still starting no longer leaks a hidden MQTT client or permanently occupies one of the eight session slots.
+- Failed connection attempts — missing TLS files, TLS files on a non-TLS protocol, or an invalid Last Will in Web Lite — now end in an error state instead of leaving the session stuck on "Connecting".
+- An orphaned client from a failed or superseded connection no longer pushes its errors into the session's live status.
+- Quitting the desktop app now waits for MQTT DISCONNECT packets to flush, so brokers no longer publish every session's Last Will on normal exit.
+- Unread tab badges keep counting after a background session's 5,000-message buffer fills.
+- The message buffer now also caps retained payload bytes, so a stream of large payloads cannot exhaust renderer memory.
+- Typing a broker host no longer forks the LoRaWAN downlink history into per-keystroke storage entries; the history now follows the connected endpoint or the selected profile.
+- Clearing the downlink history now persists across view switches and app restarts instead of silently re-importing the cleared events.
+- Two sessions watching the same broker no longer overwrite each other's stored downlink events.
+- Removing a WebSocket header or query-parameter row no longer moves keyboard focus and input state onto the row below it.
+- Importing a Protobuf schema in one open inspector is no longer wiped when another inspector with a stale list saves.
+- A completed replay now shows a green state badge instead of a neutral one.
+- Apple Silicon macOS builds now explain manual updates with the unsigned-macOS reason instead of claiming the architecture is unsupported.
+- Message re-renders no longer cascade through every open session's hidden workspace.
+
 ## [0.11.0] - 2026-08-17
 
 ### Added

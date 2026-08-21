@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { MqttMessageRecord } from '../../../shared/contracts'
 import {
   buildLoRaWanDownlinkTracksFromEvents,
@@ -12,9 +12,12 @@ import {
   canUseLoRaWanDownlinkHistoryStorage,
   clearLoRaWanDownlinkHistory,
   createLoRaWanDownlinkHistoryFile,
+  filterLoRaWanDownlinkEventsAfter,
   mergeLoRaWanDownlinkHistoryEvents,
   readLoRaWanDownlinkHistory,
+  readLoRaWanDownlinkHistoryClearedAt,
   writeLoRaWanDownlinkHistory,
+  writeLoRaWanDownlinkHistoryClearedAt,
   type LoRaWanDownlinkHistoryFile
 } from '../../../shared/lorawan-downlink-history'
 import { useI18n } from '../i18n'
@@ -54,11 +57,29 @@ const basisKeys: Record<LoRaWanDownlinkCorrelationBasis, TranslationKey> = {
   none: 'downlinks.correlation.none'
 }
 
-function readScopedHistory(storageNamespace?: string) {
-  const scopedEvents = readLoRaWanDownlinkHistory(window.localStorage, storageNamespace)
+// The message buffer is re-inspected in full whenever it changes; caching per
+// record keeps that scan O(new messages) instead of O(buffer) per message.
+const inspectionCache = new WeakMap<MqttMessageRecord, ReturnType<typeof inspectLoRaWanDownlinkEvents>>()
+
+function cachedInspectLoRaWanDownlinkEvents(message: MqttMessageRecord) {
+  const cached = inspectionCache.get(message)
+  if (cached) return cached
+  const events = inspectLoRaWanDownlinkEvents(message)
+  inspectionCache.set(message, events)
+  return events
+}
+
+function readScopedHistory(storageNamespace: string | undefined, clearedAt: string | undefined) {
+  const scopedEvents = filterLoRaWanDownlinkEventsAfter(
+    readLoRaWanDownlinkHistory(window.localStorage, storageNamespace),
+    clearedAt
+  )
   if (!storageNamespace || scopedEvents.length > 0) return scopedEvents
 
-  const legacyEvents = readLoRaWanDownlinkHistory(window.localStorage)
+  const legacyEvents = filterLoRaWanDownlinkEventsAfter(
+    readLoRaWanDownlinkHistory(window.localStorage),
+    clearedAt
+  )
   if (legacyEvents.length === 0) return scopedEvents
   if (!writeLoRaWanDownlinkHistory(window.localStorage, legacyEvents, storageNamespace)) {
     return legacyEvents
@@ -74,33 +95,49 @@ export function LoRaWanDownlinkTracker({
   onExport
 }: LoRaWanDownlinkTrackerProps) {
   const { t, formatNumber, formatDateTime } = useI18n()
-  const [historyEvents, setHistoryEvents] = useState(() => (
-    readScopedHistory(storageNamespace)
+  const [clearedAt, setClearedAt] = useState(() => (
+    readLoRaWanDownlinkHistoryClearedAt(window.localStorage, storageNamespace)
+  ))
+  // Baseline holds what was loaded from storage at mount; everything else is
+  // derived from the live message buffer, so no effect has to copy state.
+  const [baselineEvents, setBaselineEvents] = useState(() => (
+    readScopedHistory(
+      storageNamespace,
+      readLoRaWanDownlinkHistoryClearedAt(window.localStorage, storageNamespace)
+    )
   ))
   const [storageAvailable] = useState(() => (
     canUseLoRaWanDownlinkHistoryStorage(window.localStorage, storageNamespace)
   ))
   const [exporting, setExporting] = useState(false)
-  const ignoredEventIds = useRef(new Set<string>())
   const observedEvents = useMemo(
-    () => messages.flatMap(inspectLoRaWanDownlinkEvents),
-    [messages]
+    () => filterLoRaWanDownlinkEventsAfter(
+      messages.flatMap(cachedInspectLoRaWanDownlinkEvents),
+      clearedAt
+    ),
+    [clearedAt, messages]
+  )
+  const historyEvents = useMemo(
+    () => (observedEvents.length === 0
+      ? baselineEvents
+      : mergeLoRaWanDownlinkHistoryEvents(baselineEvents, observedEvents)),
+    [baselineEvents, observedEvents]
   )
 
   useEffect(() => {
-    const additions = observedEvents.filter((event) => !ignoredEventIds.current.has(event.id))
-    if (additions.length === 0) return
-    setHistoryEvents((current) => {
-      const currentIds = new Set(current.map(({ id }) => id))
-      if (additions.every(({ id }) => currentIds.has(id))) return current
-      return mergeLoRaWanDownlinkHistoryEvents(current, additions)
-    })
-  }, [observedEvents])
-
-  useEffect(() => {
     if (historyEvents.length === 0) return
-    writeLoRaWanDownlinkHistory(window.localStorage, historyEvents, storageNamespace)
-  }, [historyEvents, storageNamespace])
+    // Merge with whatever is stored so two sessions on the same broker do not
+    // overwrite each other's observed events.
+    const stored = filterLoRaWanDownlinkEventsAfter(
+      readLoRaWanDownlinkHistory(window.localStorage, storageNamespace),
+      clearedAt
+    )
+    writeLoRaWanDownlinkHistory(
+      window.localStorage,
+      stored.length > 0 ? mergeLoRaWanDownlinkHistoryEvents(stored, historyEvents) : historyEvents,
+      storageNamespace
+    )
+  }, [clearedAt, historyEvents, storageNamespace])
 
   const tracks = useMemo(
     () => buildLoRaWanDownlinkTracksFromEvents(historyEvents),
@@ -123,9 +160,11 @@ export function LoRaWanDownlinkTracker({
 
   const clearHistory = (): void => {
     if (!window.confirm(t('downlinks.clearConfirm'))) return
-    ignoredEventIds.current = new Set(observedEvents.map(({ id }) => id))
+    const nextClearedAt = new Date().toISOString()
+    setClearedAt(nextClearedAt)
+    writeLoRaWanDownlinkHistoryClearedAt(window.localStorage, nextClearedAt, storageNamespace)
     clearLoRaWanDownlinkHistory(window.localStorage, storageNamespace)
-    setHistoryEvents([])
+    setBaselineEvents([])
   }
 
   const exportHistory = async (): Promise<void> => {

@@ -211,6 +211,48 @@ export function writeLoRaWanDownlinkHistory(
   }
 }
 
+export function downlinkHistoryClearedAtKey(namespace?: string): string {
+  return `${downlinkHistoryStorageKey(namespace)}:cleared`
+}
+
+// The cleared watermark survives the history itself being removed, so a
+// remounted tracker does not re-import already-cleared events from the
+// session's message buffer.
+export function readLoRaWanDownlinkHistoryClearedAt(
+  storage: Pick<DownlinkHistoryStorage, 'getItem'>,
+  namespace?: string
+): string | undefined {
+  try {
+    const value = storage.getItem(downlinkHistoryClearedAtKey(namespace))
+    return value && validTimestamp(value) ? value : undefined
+  } catch {
+    return undefined
+  }
+}
+
+export function writeLoRaWanDownlinkHistoryClearedAt(
+  storage: Pick<DownlinkHistoryStorage, 'setItem'>,
+  clearedAt: string,
+  namespace?: string
+): boolean {
+  try {
+    storage.setItem(downlinkHistoryClearedAtKey(namespace), clearedAt)
+    return true
+  } catch {
+    return false
+  }
+}
+
+export function filterLoRaWanDownlinkEventsAfter(
+  events: LoRaWanDownlinkEvent[],
+  clearedAt?: string
+): LoRaWanDownlinkEvent[] {
+  if (!clearedAt) return events
+  const clearedTime = Date.parse(clearedAt)
+  if (!Number.isFinite(clearedTime)) return events
+  return events.filter((event) => Date.parse(event.observedAt) > clearedTime)
+}
+
 export function clearLoRaWanDownlinkHistory(
   storage: Pick<DownlinkHistoryStorage, 'removeItem'>,
   namespace?: string

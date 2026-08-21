@@ -1,4 +1,4 @@
-import type { FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import type {
   BrokerProfile,
   ConnectionConfig,
@@ -98,11 +98,23 @@ export function ConnectionPanel({
     update(field, next)
   }
 
+  // Header/query rows carry no identity of their own, and keying them purely
+  // by array index makes React reuse a removed row's DOM (and focus) for the
+  // row that slides into its place; bumping a version on removal remounts the
+  // list only at that moment.
+  const [websocketRowVersions, setWebsocketRowVersions] = useState({
+    websocketHeaders: 0,
+    websocketQueryParameters: 0
+  })
+
   const removeWebSocketValue = (
     field: 'websocketHeaders' | 'websocketQueryParameters',
     values: MqttWebSocketNameValue[],
     index: number
-  ): void => update(field, values.filter((_item, itemIndex) => itemIndex !== index))
+  ): void => {
+    setWebsocketRowVersions((current) => ({ ...current, [field]: current[field] + 1 }))
+    update(field, values.filter((_item, itemIndex) => itemIndex !== index))
+  }
 
   const chooseTlsFile = async (
     field: 'caPath' | 'clientCertificatePath' | 'clientKeyPath',
@@ -378,7 +390,7 @@ export function ConnectionPanel({
                         <p className="hint">{t('connection.websocketHeadersEmpty')}</p>
                       )}
                       {websocketHeaders.map((header, index) => (
-                        <div className="websocket-value-row" key={`header-${index}`}>
+                        <div className="websocket-value-row" key={`header-${websocketRowVersions.websocketHeaders}-${index}`}>
                           <input
                             className="mono"
                             aria-label={t('connection.websocketHeaderName', { count: index + 1 })}
@@ -442,7 +454,7 @@ export function ConnectionPanel({
                   </div>
                   <p className="hint">{t('connection.websocketQueryHelp')}</p>
                   {websocketQueryParameters.map((parameter, index) => (
-                    <div className="websocket-value-row" key={`query-${index}`}>
+                    <div className="websocket-value-row" key={`query-${websocketRowVersions.websocketQueryParameters}-${index}`}>
                       <input
                         className="mono"
                         aria-label={t('connection.websocketQueryName', { count: index + 1 })}

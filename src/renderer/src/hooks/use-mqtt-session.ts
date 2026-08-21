@@ -24,6 +24,10 @@ import { defaultMqttWebSocketAuth } from '../../../shared/websocket-auth'
 import { MqttController } from '../lib/mqtt-controller'
 
 const MAX_MESSAGES = 5_000
+// Each record keeps the payload twice (Base64 + text), so cap the retained
+// wire bytes as well or huge payloads exhaust renderer memory long before
+// the message-count limit is reached.
+const MAX_MESSAGE_BYTES = 64 * 1024 * 1024
 const WEB_PROFILE_KEY = 'mqttape:profiles:v1'
 const PROFILES_UPDATED_EVENT = 'mqttape:profiles-updated'
 
@@ -141,6 +145,9 @@ export function useMqttSession(sessionId = 'default') {
   const [config, setConfig] = useState<ConnectionConfig>(() => defaultConfig(controller.isDesktop))
   const [status, setStatus] = useState<StatusEvent>({ state: 'disconnected' })
   const [messages, setMessages] = useState<MqttMessageRecord[]>([])
+  // Monotonic count of every message this session ever received; the buffer
+  // above is trimmed, so its length cannot drive unread badges.
+  const [totalMessageCount, setTotalMessageCount] = useState(0)
   const [packetFlows, setPacketFlows] = useState<MqttPacketFlowRecord[]>([])
   const [subscriptions, setSubscriptions] = useState<Map<string, MqttQos>>(new Map())
   const [error, setError] = useState('')
@@ -154,9 +161,19 @@ export function useMqttSession(sessionId = 'default') {
     controller.activate()
     const removeStatus = controller.onStatus(setStatus)
     const removeMessage = controller.onMessage((message) => {
+      setTotalMessageCount((count) => count + 1)
       setMessages((current) => {
         const next = [message, ...current]
-        return next.length > MAX_MESSAGES ? next.slice(0, MAX_MESSAGES) : next
+        let retained = next.length > MAX_MESSAGES ? MAX_MESSAGES : next.length
+        let bytes = 0
+        for (let index = 0; index < retained; index += 1) {
+          bytes += next[index].size
+          if (bytes > MAX_MESSAGE_BYTES && index > 0) {
+            retained = index
+            break
+          }
+        }
+        return retained < next.length ? next.slice(0, retained) : next
       })
     })
     const removePacket = controller.onPacket((event) => {
@@ -299,8 +316,13 @@ export function useMqttSession(sessionId = 'default') {
     }
   }, [])
 
+  // Snapshot of the config that actually established the current/most recent
+  // connection; live config edits must not affect consumers such as the
+  // downlink-history storage namespace.
+  const [lastConnectedConfig, setLastConnectedConfig] = useState<ConnectionConfig | null>(null)
+
   const connect = useCallback(async () => {
-    await run(() => controller.connect(config))
+    if (await run(() => controller.connect(config))) setLastConnectedConfig(config)
   }, [config, controller, run])
 
   const disconnect = useCallback(async () => {
@@ -521,6 +543,8 @@ export function useMqttSession(sessionId = 'default') {
     selectTlsFile,
     status,
     messages,
+    totalMessageCount,
+    lastConnectedConfig,
     packetFlows,
     subscriptions,
     stats,

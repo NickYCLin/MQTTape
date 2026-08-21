@@ -44,6 +44,10 @@ describe('resolveUpdateSupport', () => {
       mode: 'manual',
       reason: 'unsigned-macos'
     })
+    expect(resolveUpdateSupport({ isPackaged: true, platform: 'darwin', arch: 'arm64' })).toEqual({
+      mode: 'manual',
+      reason: 'unsigned-macos'
+    })
     expect(resolveUpdateSupport({ isPackaged: true, platform: 'freebsd', arch: 'x64' })).toEqual({
       mode: 'manual',
       reason: 'unsupported-package'

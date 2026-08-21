@@ -108,6 +108,9 @@ export async function createClientOptions(config: ConnectionConfig): Promise<ICl
 
 export class MqttService {
   private client: MqttClient | undefined
+  // Bumped by every disconnect so an in-flight connect can tell that the
+  // session moved on while it was reading TLS files off disk.
+  private connectEpoch = 0
   private statusListener: StatusListener
   private messageListener: MessageListener
   private packetListener: PacketListener
@@ -124,10 +127,27 @@ export class MqttService {
 
   async connect(config: ConnectionConfig): Promise<void> {
     await this.disconnect()
+    const epoch = this.connectEpoch
     this.validateConfig(config)
     this.statusListener({ state: 'connecting', detail: this.describeEndpoint(config) })
 
-    const options = await createClientOptions(config)
+    let options: IClientOptions
+    try {
+      options = await createClientOptions(config)
+    } catch (error) {
+      // Without a terminal status the session stays on "connecting" forever
+      // and the Connect button never comes back.
+      if (epoch === this.connectEpoch) {
+        this.statusListener({
+          state: 'error',
+          detail: error instanceof Error ? error.message : String(error)
+        })
+      }
+      throw error
+    }
+    if (epoch !== this.connectEpoch) {
+      throw new Error('The MQTT session was closed before the connection started.')
+    }
 
     const client = mqtt.connect(buildBrokerUrl(config), options)
     this.client = client
@@ -163,6 +183,7 @@ export class MqttService {
   }
 
   async disconnect(): Promise<void> {
+    this.connectEpoch += 1
     const client = this.client
     this.client = undefined
 
@@ -265,7 +286,7 @@ export class MqttService {
       if (this.client === client) this.statusListener({ state: 'disconnected' })
     })
     client.on('error', (error) => {
-      this.statusListener({ state: 'error', detail: error.message })
+      if (this.client === client) this.statusListener({ state: 'error', detail: error.message })
     })
     client.on('packetsend', (packet) => {
       const event = createMqttPacketEvent(packet, 'sent')

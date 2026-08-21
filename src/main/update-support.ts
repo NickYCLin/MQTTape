@@ -17,6 +17,13 @@ export interface UpdateSupport {
 export function resolveUpdateSupport(environment: UpdateEnvironment): UpdateSupport {
   if (!environment.isPackaged) return { mode: 'disabled', reason: 'development' }
 
+  // macOS builds are unsigned on every architecture, and that is the reason
+  // users should see; the architecture check below would otherwise shadow it
+  // on Apple Silicon.
+  if (environment.platform === 'darwin') {
+    return { mode: 'manual', reason: 'unsigned-macos' }
+  }
+
   // Release metadata currently points at the x64 differential packages. ARM64
   // builds stay on explicit downloads until per-architecture feeds are split.
   if (environment.arch === 'arm64') {
@@ -28,10 +35,6 @@ export function resolveUpdateSupport(environment: UpdateEnvironment): UpdateSupp
     return environment.portableExecutableDirectory
       ? { mode: 'manual', reason: 'portable' }
       : { mode: 'automatic' }
-  }
-
-  if (environment.platform === 'darwin') {
-    return { mode: 'manual', reason: 'unsigned-macos' }
   }
 
   if (environment.platform === 'linux') {

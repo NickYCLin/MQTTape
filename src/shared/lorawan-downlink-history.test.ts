@@ -4,11 +4,15 @@ import {
   canUseLoRaWanDownlinkHistoryStorage,
   clearLoRaWanDownlinkHistory,
   createLoRaWanDownlinkHistoryFile,
+  downlinkHistoryClearedAtKey,
   downlinkHistoryStorageKey,
+  filterLoRaWanDownlinkEventsAfter,
   isLoRaWanDownlinkHistoryFile,
   mergeLoRaWanDownlinkHistoryEvents,
   readLoRaWanDownlinkHistory,
+  readLoRaWanDownlinkHistoryClearedAt,
   writeLoRaWanDownlinkHistory,
+  writeLoRaWanDownlinkHistoryClearedAt,
   type LoRaWanDownlinkEvent
 } from './lorawan-downlink-history'
 
@@ -78,6 +82,31 @@ describe('LoRaWAN downlink history', () => {
     expect(clearLoRaWanDownlinkHistory(storage, 'profile:first')).toBe(true)
     expect(readLoRaWanDownlinkHistory(storage, 'profile:first')).toEqual([])
     expect(readLoRaWanDownlinkHistory(storage, 'profile:second')).toEqual(second)
+  })
+
+  it('keeps the cleared watermark and filters already-cleared events', () => {
+    const storage = memoryStorage()
+    const before = event('before', '2026-08-17T01:00:00.000Z')
+    const atClear = event('at-clear', '2026-08-17T02:00:00.000Z')
+    const after = event('after', '2026-08-17T03:00:00.000Z')
+    const clearedAt = '2026-08-17T02:00:00.000Z'
+
+    expect(readLoRaWanDownlinkHistoryClearedAt(storage, 'profile:x')).toBeUndefined()
+    expect(writeLoRaWanDownlinkHistoryClearedAt(storage, clearedAt, 'profile:x')).toBe(true)
+    expect(readLoRaWanDownlinkHistoryClearedAt(storage, 'profile:x')).toBe(clearedAt)
+    expect(downlinkHistoryClearedAtKey('profile:x')).not.toBe(downlinkHistoryStorageKey('profile:x'))
+
+    // The watermark must survive the history itself being removed.
+    expect(clearLoRaWanDownlinkHistory(storage, 'profile:x')).toBe(true)
+    expect(readLoRaWanDownlinkHistoryClearedAt(storage, 'profile:x')).toBe(clearedAt)
+
+    expect(filterLoRaWanDownlinkEventsAfter([before, atClear, after], clearedAt)).toEqual([after])
+    expect(filterLoRaWanDownlinkEventsAfter([before, after], undefined)).toEqual([before, after])
+    expect(filterLoRaWanDownlinkEventsAfter([before, after], 'not-a-date')).toEqual([before, after])
+
+    // A malformed stored watermark is ignored instead of thrown.
+    storage.setItem(downlinkHistoryClearedAtKey('profile:x'), 'garbage')
+    expect(readLoRaWanDownlinkHistoryClearedAt(storage, 'profile:x')).toBeUndefined()
   })
 
   it('rejects malformed history without throwing and reports unavailable storage', () => {
