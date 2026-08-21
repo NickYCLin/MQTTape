@@ -2239,6 +2239,8 @@ input[type='checkbox'] {
   .session-tab { min-width: 118px; }
   .session-add > span:last-child { display: none; }
   .stage-toolbar { flex-wrap: wrap; }
+  .publish-head { flex-wrap: wrap; }
+  .publish-options { flex-wrap: wrap; row-gap: 8px; }
   .search { max-width: none; order: 3; flex-basis: 100%; }
   .toolbar-actions { margin-left: 0; }
   .metrics { grid-template-columns: 1fr; }
