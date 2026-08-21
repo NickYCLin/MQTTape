@@ -30,7 +30,7 @@
     "cbor-x": "^1.6.4",
     "electron-updater": "^6.8.9",
     "mqtt": "^5.14.1",
-    "protobufjs": "^8.7.1",
+    "protobufjs": "^8.7.2",
     "react": "^19.1.1",
     "react-dom": "^19.1.1"
   },
