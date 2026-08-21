@@ -23,12 +23,18 @@ test('desktop shell starts with the restricted preload bridge', async () => {
     })
     const window = await application.firstWindow()
     await expect(window).toHaveTitle('MQTTape')
-    await expect(window.getByText('Desktop Full', { exact: true })).toBeVisible()
-    await expect(window.getByLabel('Protocol')).toHaveValue('mqtt')
-    await expect(window.getByLabel('Port')).toHaveValue('1883')
+    await expect(window.locator('html')).toHaveAttribute('lang', 'zh-TW')
+    await expect(window.getByLabel('介面語言')).toHaveValue('zh-TW')
+    await expect(window.getByTitle('桌面完整版')).toBeVisible()
+    await expect(window.getByLabel('通訊協定')).toHaveValue('mqtt')
+    await expect(window.getByLabel('連接埠')).toHaveValue('1883')
     await expect(window.getByRole('note')).toContainText(
-      'MQTT over TCP · registered port 1883 · unencrypted'
+      'MQTT over TCP · 登記連接埠 1883 · 未加密'
     )
+
+    await window.getByLabel('介面語言').selectOption('en')
+    await expect(window.locator('html')).toHaveAttribute('lang', 'en')
+    await expect(window.getByLabel('Interface language')).toHaveValue('en')
 
     const bridgeMethods = await window.evaluate(() => Object.keys(window.mqttape ?? {}).sort())
     expect(bridgeMethods).toEqual(expect.arrayContaining([
@@ -54,10 +60,9 @@ test('desktop shell starts with the restricted preload bridge', async () => {
     await window.getByRole('button', { name: 'Add parameter' }).click()
     await expect(window.getByLabel('WebSocket query parameter 1 name')).toBeVisible()
 
-    await window.getByLabel('Interface language').selectOption('zh-TW')
-    await expect(window.getByTitle('桌面完整版')).toBeVisible()
-    await expect(window.getByRole('note')).toContainText('8084 是部分 Broker 的常見預設')
-    await expect(window.getByLabel('HTTP Basic 使用者名稱')).toBeVisible()
+    await expect(window.getByTitle('Desktop Full')).toBeVisible()
+    await expect(window.getByRole('note')).toContainText('8084 is a common Broker default')
+    await expect(window.getByLabel('HTTP Basic username')).toBeVisible()
   } finally {
     try {
       await application?.close()

@@ -39,7 +39,7 @@ MQTTape 是一套可在桌面與瀏覽器使用的開源 MQTT 除錯工具。它
 - 重播期間可暫停、繼續或取消，並維持原始訊息順序
 - 桌面版 Broker 設定檔會以作業系統加密機制保存秘密
 - 桌面版支援自訂 CA 與 Client Certificate／Key 的 mTLS
-- 可切換英文與繁體中文介面，並在本機記住偏好
+- 預設使用繁體中文介面；使用者可自行切換成英文，並在本機記住偏好
 - 已安裝的 Windows 與支援的 Linux 套件可在背景檢查及下載更新
 - 提供 Windows 免安裝版，以及 Windows、macOS、Linux 安裝套件
 - 提供跟隨系統、Midnight、Tape、Magenta、高對比、Daylight 與 Paper 外觀主題

@@ -1,8 +1,9 @@
 export const LANGUAGE_STORAGE_KEY = 'mqttape:language:v1'
 
-export const supportedLanguages = ['en', 'zh-TW'] as const
+export const supportedLanguages = ['zh-TW', 'en'] as const
 
 export type Language = typeof supportedLanguages[number]
+export const DEFAULT_LANGUAGE: Language = 'zh-TW'
 export type TranslationParameters = Record<string, string | number>
 
 const english = {
@@ -1173,9 +1174,9 @@ export function isLanguage(value: unknown): value is Language {
 export function readLanguage(storage: Pick<Storage, 'getItem'>): Language {
   try {
     const stored = storage.getItem(LANGUAGE_STORAGE_KEY)
-    return isLanguage(stored) ? stored : 'en'
+    return isLanguage(stored) ? stored : DEFAULT_LANGUAGE
   } catch {
-    return 'en'
+    return DEFAULT_LANGUAGE
   }
 }
 
